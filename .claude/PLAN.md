@@ -299,11 +299,11 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - Test happy path end-to-end: login → add auto → add 3 fillups → verify MPG → edit → delete
 
 **Acceptance criteria:**
-- [ ] No layout breakage at 375px, 768px, 1280px
-- [ ] End-to-end happy path completes without errors in browser console
-- [ ] All API errors surface a visible (non-alert) error message to user
-- [ ] `dotnet run` + open browser → fully functional with zero manual setup steps beyond that
-- [ ] git commit created: `feat: task 10 — polish and RWD pass`
+- [x] No layout breakage at 375px, 768px, 1280px
+- [x] End-to-end happy path completes without errors in browser console
+- [x] All API errors surface a visible (non-alert) error message to user
+- [x] `dotnet run` + open browser → fully functional with zero manual setup steps beyond that
+- [x] git commit created: `feat: task 10 — polish and RWD pass`
 
 **Completion signal:** When all acceptance criteria above are satisfied (verified via Playwright e2e test covering the full happy path) and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 

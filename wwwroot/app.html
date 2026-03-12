@@ -277,6 +277,47 @@
       display: none;
     }
 
+    /* ── Toast notifications ── */
+    #toast {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 200;
+      white-space: nowrap;
+    }
+
+    #toast.show { opacity: 1; }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-row {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
     /* ── Fillup table ── */
     .table-wrap {
       overflow-x: auto;
@@ -352,6 +393,8 @@
     </div>
   </div>
 </main>
+
+<div id="toast"></div>
 
 <!-- Auto Modal -->
 <div class="modal-overlay" id="autoModal">
@@ -444,6 +487,16 @@
 let autos = [];
 let currentAutoId = null;
 
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
 // ── Auth guard ─────────────────────────────────────────────────────────────
 (async () => {
   try {
@@ -480,7 +533,7 @@ autoSelector.addEventListener('change', () => {
 // ── Load autos ─────────────────────────────────────────────────────────────
 async function loadAutos() {
   const res = await fetch('/api/autos', { credentials: 'same-origin' });
-  if (!res.ok) return;
+  if (!res.ok) { showToast('Failed to load autos.'); return; }
   autos = await res.json();
   renderAutoSelector();
   renderAutoGrid();
@@ -593,6 +646,8 @@ async function deleteAuto(id) {
     if (currentAutoId === id) currentAutoId = null;
     await loadAutos();
     renderFillups();
+  } else {
+    showToast('Delete failed. Please try again.');
   }
 }
 
@@ -604,9 +659,12 @@ async function renderFillups() {
     return;
   }
 
+  container.innerHTML = '<p class="loading-row"><span class="spinner"></span> Loading…</p>';
+
   const res = await fetch(`/api/autos/${currentAutoId}/fillups`, { credentials: 'same-origin' });
   if (!res.ok) {
-    container.innerHTML = '<p class="empty">Failed to load fillups.</p>';
+    container.innerHTML = '<p class="empty" style="color:var(--danger)">Failed to load fillups. Please try again.</p>';
+    showToast('Failed to load fillups.');
     return;
   }
   const rows = await res.json();
@@ -671,7 +729,7 @@ function defaultDatetime() {
 
 function openAddFillup() {
   if (!currentAutoId) {
-    alert('Please select an auto first.');
+    showToast('Select an auto first.');
     return;
   }
   const { date, time } = defaultDatetime();
@@ -770,7 +828,11 @@ async function deleteFillup(id) {
     method: 'DELETE',
     credentials: 'same-origin',
   });
-  if (res.ok) await renderFillups();
+  if (res.ok) {
+    await renderFillups();
+  } else {
+    showToast('Delete failed. Please try again.');
+  }
 }
 
 // ── GPS ────────────────────────────────────────────────────────────────────

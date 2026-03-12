@@ -32,7 +32,7 @@ test.describe('Task 7 — App Shell & Autos Management', () => {
     await page.goto('/app.html');
 
     // Go to Autos tab
-    await page.click('text=Autos');
+    await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
 
     await page.fill('#autoBrand', 'Honda');
@@ -53,7 +53,7 @@ test.describe('Task 7 — App Shell & Autos Management', () => {
     await page.goto('/app.html');
 
     // Add auto first
-    await page.click('text=Autos');
+    await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Ford');
     await page.fill('#autoModel', 'Focus');
@@ -80,7 +80,7 @@ test.describe('Task 7 — App Shell & Autos Management', () => {
     await page.goto('/app.html');
 
     // Add auto to delete
-    await page.click('text=Autos');
+    await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Chevy');
     await page.fill('#autoModel', 'Malibu');
