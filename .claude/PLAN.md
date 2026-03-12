@@ -259,12 +259,12 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - Auto selector change reloads the table for the newly selected auto
 
 **Acceptance criteria:**
-- [ ] Table renders all fillups for selected auto, newest first
-- [ ] Switching auto selector reloads the table with correct data
-- [ ] MPG shows computed value or `—` correctly
-- [ ] Delete row removes it without page reload
-- [ ] Table is scrollable/readable on 375px mobile
-- [ ] git commit created: `feat: task 8 — fillup log tab`
+- [x] Table renders all fillups for selected auto, newest first
+- [x] Switching auto selector reloads the table with correct data
+- [x] MPG shows computed value or `—` correctly
+- [x] Delete row removes it without page reload
+- [x] Table is scrollable/readable on 375px mobile
+- [x] git commit created: `feat: task 8 — fillup log tab`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 
