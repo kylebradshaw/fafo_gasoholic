@@ -197,12 +197,12 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - `mpg = (this.Odometer - prior.Odometer) / sum of gallons between them` — or null if no prior full fill
 
 **Acceptance criteria:**
-- [ ] POST fillup, then GET returns it as first row
-- [ ] Two consecutive full fills: GET shows correct MPG on second entry
-- [ ] Partial fill shows `null` mpg in response
-- [ ] DELETE fillup returns 204; it no longer appears in GET
-- [ ] Auto must belong to session user; otherwise 403
-- [ ] git commit created: `feat: task 5 — fillups API with MPG`
+- [x] POST fillup, then GET returns it as first row
+- [x] Two consecutive full fills: GET shows correct MPG on second entry
+- [x] Partial fill shows `null` mpg in response
+- [x] DELETE fillup returns 204; it no longer appears in GET
+- [x] Auto must belong to session user; otherwise 403
+- [x] git commit created: `feat: task 5 — fillups API with MPG`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test or curl) and the git commit exists — then move on to the next task with unchecked criteria.
 
