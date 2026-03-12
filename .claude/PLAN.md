@@ -132,7 +132,7 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] `dotnet ef migrations list` shows `InitialCreate` as applied
 - [x] SQLite DB contains tables `Users`, `Autos`, `Fillups` with correct columns (verify via `sqlite3 gasoholic.db .schema`)
 - [x] No EF warnings about unmapped properties at startup
-- [ ] git commit created: `feat: task 2 — data model and migrations`
+- [x] git commit created: `feat: task 2 — data model and migrations`
 
 ---
 
@@ -145,10 +145,10 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - Add `RequireAuth` helper / filter reused by all `/api/*` routes
 
 **Acceptance criteria:**
-- [ ] `POST /auth/login` with `{ "email": "test@test.com" }` returns 200 and `Set-Cookie` header
-- [ ] `GET /auth/me` with that cookie returns `{ "email": "test@test.com" }`
-- [ ] `GET /auth/me` without cookie returns 401
-- [ ] `POST /auth/logout` clears session; subsequent `GET /auth/me` returns 401
+- [x] `POST /auth/login` with `{ "email": "test@test.com" }` returns 200 and `Set-Cookie` header
+- [x] `GET /auth/me` with that cookie returns `{ "email": "test@test.com" }`
+- [x] `GET /auth/me` without cookie returns 401
+- [x] `POST /auth/logout` clears session; subsequent `GET /auth/me` returns 401
 - [ ] git commit created: `feat: task 3 — auth endpoints`
 
 ---
