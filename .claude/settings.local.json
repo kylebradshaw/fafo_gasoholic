@@ -9,7 +9,10 @@
       "Grep(*)",
       "Bash(dotnet new:*)",
       "Bash(dotnet add:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(pkill -f \"dotnet run\" 2>/dev/null; sleep 1; echo \"stopped\")",
+      "Bash(git add:*)"
     ]
   }
 }

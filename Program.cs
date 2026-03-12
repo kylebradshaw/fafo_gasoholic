@@ -38,5 +38,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapAuthEndpoints();
 app.MapAutoEndpoints();
+app.MapFillupEndpoints();
 
 app.Run();

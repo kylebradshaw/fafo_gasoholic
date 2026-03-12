@@ -1,0 +1,6 @@
+@gasoholic_HostAddress = http://localhost:5082
+
+GET {{gasoholic_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -4,9 +4,14 @@
 
 Building a local-only .NET 10 ASP.NET Core API + Vanilla HTML/JS frontend for tracking vehicle fuel fillups. The app is demo-grade: email-only login (no password), cookie-based sessions, SQLite via EF Core. Users can own multiple autos, each with its own fillup log showing MPG computed per entry.
 
-This plan is structured as sequential todo items with acceptance criteria. Execute with `/loop` — each task must pass its criteria before moving to the next.
+This plan is structured as sequential todo items with acceptance criteria. Each task is optimized for use with the ralph-loop plugin.
 
-**After every task:** once all acceptance criteria are checked off, if applicable create a playwrite e2e test and verify execution, then create a git commit scoped to that task before starting the next one.
+**How to run all remaining tasks sequentially:**
+```
+/ralph-loop "$(cat .claude/PLAN.md)" --completion-promise "TESTS COMPLETE"
+```
+
+**Loop behavior:** Each iteration, find the first task that still has unchecked `[ ]` acceptance criteria. Implement it fully, check off each criterion as it passes, write or update its Playwright e2e test, then create the git commit. Do NOT output the completion promise until every task (1–10) has all criteria checked `[x]` and all commits exist.
 
 ---
 
@@ -118,6 +123,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] `gasoholic.db` file is created on first run (empty schema OK at this stage)
 - [x] git commit created: `feat: task 1 — project scaffold`
 
+**Task done when:** all criteria above are checked `[x]` and the git commit exists — then move on to the next task with unchecked criteria.
+
 ---
 
 ### Task 2 — EF Core Data Model + Migrations
@@ -133,6 +140,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] SQLite DB contains tables `Users`, `Autos`, `Fillups` with correct columns (verify via `sqlite3 gasoholic.db .schema`)
 - [x] No EF warnings about unmapped properties at startup
 - [x] git commit created: `feat: task 2 — data model and migrations`
+
+**Task done when:** all criteria above are checked `[x]` and the git commit exists — then move on to the next task with unchecked criteria.
 
 ---
 
@@ -151,6 +160,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] `POST /auth/logout` clears session; subsequent `GET /auth/me` returns 401
 - [x] git commit created: `feat: task 3 — auth endpoints`
 
+**Task done when:** all criteria above are checked `[x]` and the git commit exists — then move on to the next task with unchecked criteria.
+
 ---
 
 ### Task 4 — Autos API
@@ -166,7 +177,9 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] PUT updates brand/model/plate/odometer
 - [x] DELETE removes the auto and returns 204
 - [x] A second user (different session) cannot PUT/DELETE another user's auto (returns 403)
-- [ ] git commit created: `feat: task 4 — autos API`
+- [x] git commit created: `feat: task 4 — autos API`
+
+**Task done when:** all criteria above are checked `[x]` and the git commit exists — then move on to the next task with unchecked criteria.
 
 ---
 
@@ -191,6 +204,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] Auto must belong to session user; otherwise 403
 - [ ] git commit created: `feat: task 5 — fillups API with MPG`
 
+**Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test or curl) and the git commit exists — then move on to the next task with unchecked criteria.
+
 ---
 
 ### Task 6 — Login Page (`wwwroot/index.html`)
@@ -206,6 +221,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] Visiting `index.html` when already logged in skips to `/app.html`
 - [ ] Form is usable on mobile (375px width) without horizontal scroll
 - [ ] git commit created: `feat: task 6 — login page`
+
+**Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 
 ---
 
@@ -227,6 +244,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] Unauthenticated visit to `/app.html` redirects to `index.html`
 - [ ] git commit created: `feat: task 7 — app shell and autos management`
 
+**Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
+
 ---
 
 ### Task 8 — Fillup Log Tab
@@ -247,6 +266,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] Table is scrollable/readable on 375px mobile
 - [ ] git commit created: `feat: task 8 — fillup log tab`
 
+**Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
+
 ---
 
 ### Task 9 — Add/Edit Fillup Modal + GPS
@@ -263,6 +284,8 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] Editing an existing fillup updates the row in place
 - [ ] All required fields validated client-side before submit (no blank price/gal/odometer)
 - [ ] git commit created: `feat: task 9 — add/edit fillup modal with GPS`
+
+**Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 
 ---
 
@@ -282,11 +305,19 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [ ] `dotnet run` + open browser → fully functional with zero manual setup steps beyond that
 - [ ] git commit created: `feat: task 10 — polish and RWD pass`
 
+**Completion signal:** When all acceptance criteria above are satisfied (verified via Playwright e2e test covering the full happy path) and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
 ---
 
 ## Loop Execution Notes
 
-- Run `/loop` targeting one task at a time
-- Each iteration: implement → verify acceptance criteria → check off → **git commit** → move to next task
-- Commit message format: `feat: task N — <short description>` (e.g. `feat: task 1 — project scaffold`)
-- MPG logic in Task 5 is the most complex unit — get it right before building the UI on top of it
+**Start the full sequential loop (Tasks 5–10) with:**
+```
+/ralph-loop "$(cat .claude/PLAN.md)" --completion-promise "TESTS COMPLETE"
+```
+
+- Each iteration: find the first task with unchecked `[ ]` criteria → implement → check off each criterion → write/run Playwright test → **git commit** → loop again
+- Only Task 10's completion emits `<promise>TESTS COMPLETE</promise>` to end the loop
+- Commit message format: `feat: task N — <short description>`
+- Tasks 1–4 are already complete; the loop will skip them automatically (all `[x]`)
+- MPG logic in Task 5 is the most complex — get it right before the UI builds on top
