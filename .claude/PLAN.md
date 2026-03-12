@@ -113,9 +113,9 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - Add `appsettings.json` with SQLite connection string pointing to `gasoholic.db`
 
 **Acceptance criteria:**
-- [ ] `dotnet run` starts without errors
-- [ ] `curl http://localhost:5000/` returns 200 or 404 (not 500)
-- [ ] `gasoholic.db` file is created on first run (empty schema OK at this stage)
+- [x] `dotnet run` starts without errors
+- [x] `curl http://localhost:5000/` returns 200 or 404 (not 500)
+- [x] `gasoholic.db` file is created on first run (empty schema OK at this stage)
 - [ ] git commit created: `feat: task 1 — project scaffold`
 
 ---
