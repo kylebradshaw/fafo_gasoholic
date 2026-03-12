@@ -278,12 +278,12 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - On save: POST or PUT to API, close modal, refresh table
 
 **Acceptance criteria:**
-- [ ] Opening the modal triggers GPS prompt; Location populates with a human-readable string if permission granted
-- [ ] If GPS denied, Location field is empty and editable
-- [ ] Saving a new fillup appends it to the top of the log
-- [ ] Editing an existing fillup updates the row in place
-- [ ] All required fields validated client-side before submit (no blank price/gal/odometer)
-- [ ] git commit created: `feat: task 9 — add/edit fillup modal with GPS`
+- [x] Opening the modal triggers GPS prompt; Location populates with a human-readable string if permission granted
+- [x] If GPS denied, Location field is empty and editable
+- [x] Saving a new fillup appends it to the top of the log
+- [x] Editing an existing fillup updates the row in place
+- [x] All required fields validated client-side before submit (no blank price/gal/odometer)
+- [x] git commit created: `feat: task 9 — add/edit fillup modal with GPS`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 
