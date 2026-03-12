@@ -116,7 +116,7 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] `dotnet run` starts without errors
 - [x] `curl http://localhost:5000/` returns 200 or 404 (not 500)
 - [x] `gasoholic.db` file is created on first run (empty schema OK at this stage)
-- [ ] git commit created: `feat: task 1 — project scaffold`
+- [x] git commit created: `feat: task 1 — project scaffold`
 
 ---
 
@@ -129,9 +129,9 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - Run `dotnet ef migrations add InitialCreate` and `dotnet ef database update`
 
 **Acceptance criteria:**
-- [ ] `dotnet ef migrations list` shows `InitialCreate` as applied
-- [ ] SQLite DB contains tables `Users`, `Autos`, `Fillups` with correct columns (verify via `sqlite3 gasoholic.db .schema`)
-- [ ] No EF warnings about unmapped properties at startup
+- [x] `dotnet ef migrations list` shows `InitialCreate` as applied
+- [x] SQLite DB contains tables `Users`, `Autos`, `Fillups` with correct columns (verify via `sqlite3 gasoholic.db .schema`)
+- [x] No EF warnings about unmapped properties at startup
 - [ ] git commit created: `feat: task 2 — data model and migrations`
 
 ---
