@@ -149,7 +149,7 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] `GET /auth/me` with that cookie returns `{ "email": "test@test.com" }`
 - [x] `GET /auth/me` without cookie returns 401
 - [x] `POST /auth/logout` clears session; subsequent `GET /auth/me` returns 401
-- [ ] git commit created: `feat: task 3 — auth endpoints`
+- [x] git commit created: `feat: task 3 — auth endpoints`
 
 ---
 
@@ -162,10 +162,10 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - `DELETE /api/autos/{id}` — delete (cascade fillups); 403 if not owner
 
 **Acceptance criteria:**
-- [ ] POST creates an auto; GET returns it in the list
-- [ ] PUT updates brand/model/plate/odometer
-- [ ] DELETE removes the auto and returns 204
-- [ ] A second user (different session) cannot PUT/DELETE another user's auto (returns 403)
+- [x] POST creates an auto; GET returns it in the list
+- [x] PUT updates brand/model/plate/odometer
+- [x] DELETE removes the auto and returns 204
+- [x] A second user (different session) cannot PUT/DELETE another user's auto (returns 403)
 - [ ] git commit created: `feat: task 4 — autos API`
 
 ---
