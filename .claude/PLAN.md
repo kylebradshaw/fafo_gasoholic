@@ -217,10 +217,10 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - RWD: looks correct on 375px and 1280px
 
 **Acceptance criteria:**
-- [ ] Entering email and clicking Sign In redirects to `/app.html`
-- [ ] Visiting `index.html` when already logged in skips to `/app.html`
-- [ ] Form is usable on mobile (375px width) without horizontal scroll
-- [ ] git commit created: `feat: task 6 — login page`
+- [x] Entering email and clicking Sign In redirects to `/app.html`
+- [x] Visiting `index.html` when already logged in skips to `/app.html`
+- [x] Form is usable on mobile (375px width) without horizontal scroll
+- [x] git commit created: `feat: task 6 — login page`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 
