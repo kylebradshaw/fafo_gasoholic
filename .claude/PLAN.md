@@ -237,12 +237,12 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - On load: `GET /auth/me` → if 401 redirect to `index.html`
 
 **Acceptance criteria:**
-- [ ] Adding an auto via modal appears in the list and in the nav selector
-- [ ] Editing an auto updates the card
-- [ ] Deleting an auto removes it from list and selector
-- [ ] Logout clears session and redirects to login
-- [ ] Unauthenticated visit to `/app.html` redirects to `index.html`
-- [ ] git commit created: `feat: task 7 — app shell and autos management`
+- [x] Adding an auto via modal appears in the list and in the nav selector
+- [x] Editing an auto updates the card
+- [x] Deleting an auto removes it from list and selector
+- [x] Logout clears session and redirects to login
+- [x] Unauthenticated visit to `/app.html` redirects to `index.html`
+- [x] git commit created: `feat: task 7 — app shell and autos management`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
 

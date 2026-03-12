@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gasoholic</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f5;
+      --surface: #fff;
+      --border: #e0e0e0;
+      --text: #111;
+      --muted: #666;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    nav .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-right: auto;
+    }
+
+    nav select {
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.9rem;
+      max-width: 200px;
+    }
+
+    nav button {
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    nav button:hover { background: var(--bg); }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 1rem;
+    }
+
+    .tab-btn {
+      padding: 0.6rem 1rem;
+      border: none;
+      background: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ── Main ── */
+    main {
+      padding: 1rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      padding: 0.4rem 0.9rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-danger {
+      padding: 0.3rem 0.6rem;
+      background: none;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .btn-danger:hover { background: #fef2f2; }
+
+    .btn-secondary {
+      padding: 0.3rem 0.6rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover { background: var(--bg); }
+
+    /* ── Auto cards ── */
+    .auto-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .auto-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .auto-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .auto-card .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .auto-card .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 2rem 0;
+      text-align: center;
+    }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 480px) {
+      .modal {
+        max-width: 100%;
+        margin: 0;
+        border-radius: 8px 8px 0 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 80dvh;
+      }
+
+      .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+      }
+    }
+
+    .modal h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 0.875rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.95rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+
+    .error-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: var(--danger);
+      border-radius: 5px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+      display: none;
+    }
+
+    /* ── Fillup table ── */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      min-width: 560px;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    td.actions-cell {
+      display: flex;
+      gap: 0.4rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">Gasoholic</span>
+  <select id="autoSelector">
+    <option value="">— select auto —</option>
+  </select>
+  <button id="logoutBtn">Log out</button>
+</nav>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="log">Log</button>
+  <button class="tab-btn" data-tab="autos">Autos</button>
+</div>
+
+<main>
+  <!-- Log Tab -->
+  <div class="tab-panel active" id="tab-log">
+    <div class="section-header">
+      <h2>Fillup Log</h2>
+      <button class="btn-primary" id="addFillupBtn">+ Add Fillup</button>
+    </div>
+    <div id="fillupContent">
+      <p class="empty">Select an auto to view its fillup log.</p>
+    </div>
+  </div>
+
+  <!-- Autos Tab -->
+  <div class="tab-panel" id="tab-autos">
+    <div class="section-header">
+      <h2>My Autos</h2>
+      <button class="btn-primary" id="addAutoBtn">+ Add Auto</button>
+    </div>
+    <div class="auto-grid" id="autoGrid">
+      <p class="empty">No autos yet.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Auto Modal -->
+<div class="modal-overlay" id="autoModal">
+  <div class="modal">
+    <h2 id="autoModalTitle">Add Auto</h2>
+    <div class="error-banner" id="autoError"></div>
+    <form id="autoForm">
+      <input type="hidden" id="autoId">
+      <div class="form-group">
+        <label>Brand</label>
+        <input type="text" id="autoBrand" placeholder="Toyota" required>
+      </div>
+      <div class="form-group">
+        <label>Model</label>
+        <input type="text" id="autoModel" placeholder="Camry" required>
+      </div>
+      <div class="form-group">
+        <label>License Plate</label>
+        <input type="text" id="autoPlate" placeholder="ABC-123" required>
+      </div>
+      <div class="form-group">
+        <label>Odometer (miles)</label>
+        <input type="number" id="autoOdometer" placeholder="50000" min="0" step="0.1" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="autoCancel">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fillup Modal -->
+<div class="modal-overlay" id="fillupModal">
+  <div class="modal">
+    <h2 id="fillupModalTitle">Add Fillup</h2>
+    <div class="error-banner" id="fillupError"></div>
+    <form id="fillupForm">
+      <input type="hidden" id="fillupId">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="fillupDate" required>
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="fillupTime" required>
+      </div>
+      <div class="form-group">
+        <label>Location <span id="gpsStatus" style="color:var(--muted);font-weight:400;font-size:0.8rem"></span></label>
+        <input type="text" id="fillupLocation" placeholder="Station name or address">
+      </div>
+      <div class="form-group">
+        <label>Fuel Type</label>
+        <select id="fillupFuelType">
+          <option value="0">Regular</option>
+          <option value="1">Mid-grade</option>
+          <option value="2">Premium</option>
+          <option value="3">Diesel</option>
+          <option value="4">E85</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price per Gallon ($)</label>
+        <input type="number" id="fillupPrice" placeholder="3.50" min="0" step="0.001" required>
+      </div>
+      <div class="form-group">
+        <label>Gallons</label>
+        <input type="number" id="fillupGallons" placeholder="12.5" min="0.001" step="0.001" required>
+      </div>
+      <div class="form-group">
+        <label>Odometer (miles)</label>
+        <input type="number" id="fillupOdometer" placeholder="51200" min="0" step="0.1" required>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:0.5rem">
+        <input type="checkbox" id="fillupPartial" style="width:auto">
+        <label for="fillupPartial" style="margin:0;font-weight:400">Partial fill (tank not full)</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="fillupCancel">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let autos = [];
+let currentAutoId = null;
+
+// ── Auth guard ─────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const res = await fetch('/auth/me', { credentials: 'same-origin' });
+    if (!res.ok) window.location.replace('/');
+  } catch (_) {
+    window.location.replace('/');
+  }
+})();
+
+// ── Logout ─────────────────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  window.location.replace('/');
+});
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Auto selector ──────────────────────────────────────────────────────────
+const autoSelector = document.getElementById('autoSelector');
+autoSelector.addEventListener('change', () => {
+  currentAutoId = autoSelector.value ? parseInt(autoSelector.value) : null;
+  renderFillups();
+});
+
+// ── Load autos ─────────────────────────────────────────────────────────────
+async function loadAutos() {
+  const res = await fetch('/api/autos', { credentials: 'same-origin' });
+  if (!res.ok) return;
+  autos = await res.json();
+  renderAutoSelector();
+  renderAutoGrid();
+}
+
+function renderAutoSelector() {
+  const prev = autoSelector.value;
+  autoSelector.innerHTML = '<option value="">— select auto —</option>';
+  autos.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = `${a.brand} ${a.model} (${a.plate})`;
+    autoSelector.appendChild(opt);
+  });
+  if (prev && autos.find(a => a.id === parseInt(prev))) {
+    autoSelector.value = prev;
+  } else {
+    currentAutoId = null;
+  }
+}
+
+function renderAutoGrid() {
+  const grid = document.getElementById('autoGrid');
+  if (!autos.length) {
+    grid.innerHTML = '<p class="empty">No autos yet. Click "+ Add Auto" to get started.</p>';
+    return;
+  }
+  grid.innerHTML = autos.map(a => `
+    <div class="auto-card" data-id="${a.id}">
+      <h3>${a.brand} ${a.model}</h3>
+      <p class="meta">${a.plate} · ${a.odometer.toLocaleString()} mi</p>
+      <div class="actions">
+        <button class="btn-secondary" onclick="openEditAuto(${a.id})">Edit</button>
+        <button class="btn-danger" onclick="deleteAuto(${a.id})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Auto modal ─────────────────────────────────────────────────────────────
+function openAddAuto() {
+  document.getElementById('autoModalTitle').textContent = 'Add Auto';
+  document.getElementById('autoId').value = '';
+  document.getElementById('autoBrand').value = '';
+  document.getElementById('autoModel').value = '';
+  document.getElementById('autoPlate').value = '';
+  document.getElementById('autoOdometer').value = '';
+  document.getElementById('autoError').style.display = 'none';
+  document.getElementById('autoModal').classList.add('open');
+  document.getElementById('autoBrand').focus();
+}
+
+function openEditAuto(id) {
+  const a = autos.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('autoModalTitle').textContent = 'Edit Auto';
+  document.getElementById('autoId').value = a.id;
+  document.getElementById('autoBrand').value = a.brand;
+  document.getElementById('autoModel').value = a.model;
+  document.getElementById('autoPlate').value = a.plate;
+  document.getElementById('autoOdometer').value = a.odometer;
+  document.getElementById('autoError').style.display = 'none';
+  document.getElementById('autoModal').classList.add('open');
+}
+
+function closeAutoModal() {
+  document.getElementById('autoModal').classList.remove('open');
+}
+
+document.getElementById('addAutoBtn').addEventListener('click', openAddAuto);
+document.getElementById('autoCancel').addEventListener('click', closeAutoModal);
+
+document.getElementById('autoForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('autoId').value;
+  const body = {
+    brand: document.getElementById('autoBrand').value.trim(),
+    model: document.getElementById('autoModel').value.trim(),
+    plate: document.getElementById('autoPlate').value.trim(),
+    odometer: parseFloat(document.getElementById('autoOdometer').value),
+  };
+
+  const url = id ? `/api/autos/${id}` : '/api/autos';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+
+  if (res.ok) {
+    closeAutoModal();
+    await loadAutos();
+    renderFillups();
+  } else {
+    const errEl = document.getElementById('autoError');
+    errEl.textContent = 'Save failed. Please try again.';
+    errEl.style.display = 'block';
+  }
+});
+
+async function deleteAuto(id) {
+  if (!confirm('Delete this auto and all its fillups?')) return;
+  const res = await fetch(`/api/autos/${id}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  if (res.ok) {
+    if (currentAutoId === id) currentAutoId = null;
+    await loadAutos();
+    renderFillups();
+  }
+}
+
+// ── Fillup list ────────────────────────────────────────────────────────────
+async function renderFillups() {
+  const container = document.getElementById('fillupContent');
+  if (!currentAutoId) {
+    container.innerHTML = '<p class="empty">Select an auto to view its fillup log.</p>';
+    return;
+  }
+
+  const res = await fetch(`/api/autos/${currentAutoId}/fillups`, { credentials: 'same-origin' });
+  if (!res.ok) {
+    container.innerHTML = '<p class="empty">Failed to load fillups.</p>';
+    return;
+  }
+  const rows = await res.json();
+
+  if (!rows.length) {
+    container.innerHTML = '<p class="empty">No fillups yet. Click "+ Add Fillup" to get started.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date/Time</th>
+            <th>Location</th>
+            <th>Fuel</th>
+            <th>$/gal</th>
+            <th>Gal</th>
+            <th>Odometer</th>
+            <th>MPG</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr data-fillup-id="${r.id}">
+              <td>${formatDateTime(r.filledAt)}</td>
+              <td>${r.location || '—'}</td>
+              <td>${r.fuelType}</td>
+              <td>$${parseFloat(r.pricePerGallon).toFixed(3)}</td>
+              <td>${parseFloat(r.gallons).toFixed(3)}</td>
+              <td>${parseFloat(r.odometer).toLocaleString()}</td>
+              <td>${r.mpg != null ? parseFloat(r.mpg).toFixed(1) : '—'}</td>
+              <td class="actions-cell">
+                <button class="btn-secondary" onclick="openEditFillup(${r.id})">Edit</button>
+                <button class="btn-danger" onclick="deleteFillup(${r.id})">Del</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function formatDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── Fillup modal ───────────────────────────────────────────────────────────
+let fillupGpsCoords = { lat: null, lng: null };
+
+function defaultDatetime() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return { date, time };
+}
+
+function openAddFillup() {
+  if (!currentAutoId) {
+    alert('Please select an auto first.');
+    return;
+  }
+  const { date, time } = defaultDatetime();
+  document.getElementById('fillupModalTitle').textContent = 'Add Fillup';
+  document.getElementById('fillupId').value = '';
+  document.getElementById('fillupDate').value = date;
+  document.getElementById('fillupTime').value = time;
+  document.getElementById('fillupLocation').value = '';
+  document.getElementById('fillupFuelType').value = '0';
+  document.getElementById('fillupPrice').value = '';
+  document.getElementById('fillupGallons').value = '';
+  document.getElementById('fillupOdometer').value = '';
+  document.getElementById('fillupPartial').checked = false;
+  document.getElementById('fillupError').style.display = 'none';
+  fillupGpsCoords = { lat: null, lng: null };
+  document.getElementById('fillupModal').classList.add('open');
+  tryGps();
+}
+
+function openEditFillup(id) {
+  fetch(`/api/autos/${currentAutoId}/fillups`, { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(rows => {
+      const r = rows.find(x => x.id === id);
+      if (!r) return;
+      const dt = new Date(r.filledAt);
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('fillupModalTitle').textContent = 'Edit Fillup';
+      document.getElementById('fillupId').value = r.id;
+      document.getElementById('fillupDate').value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+      document.getElementById('fillupTime').value = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+      document.getElementById('fillupLocation').value = r.location || '';
+      document.getElementById('fillupFuelType').value = fuelTypeIndex(r.fuelType);
+      document.getElementById('fillupPrice').value = r.pricePerGallon;
+      document.getElementById('fillupGallons').value = r.gallons;
+      document.getElementById('fillupOdometer').value = r.odometer;
+      document.getElementById('fillupPartial').checked = r.isPartialFill;
+      document.getElementById('fillupError').style.display = 'none';
+      fillupGpsCoords = { lat: r.latitude, lng: r.longitude };
+      document.getElementById('fillupModal').classList.add('open');
+    });
+}
+
+function fuelTypeIndex(name) {
+  const map = { Regular: 0, MidGrade: 1, Premium: 2, Diesel: 3, E85: 4 };
+  return map[name] ?? 0;
+}
+
+function closeFillupModal() {
+  document.getElementById('fillupModal').classList.remove('open');
+}
+
+document.getElementById('addFillupBtn').addEventListener('click', openAddFillup);
+document.getElementById('fillupCancel').addEventListener('click', closeFillupModal);
+
+document.getElementById('fillupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('fillupId').value;
+  const date = document.getElementById('fillupDate').value;
+  const time = document.getElementById('fillupTime').value;
+  const body = {
+    filledAt: `${date}T${time}:00`,
+    location: document.getElementById('fillupLocation').value.trim() || null,
+    latitude: fillupGpsCoords.lat,
+    longitude: fillupGpsCoords.lng,
+    fuelType: parseInt(document.getElementById('fillupFuelType').value),
+    pricePerGallon: parseFloat(document.getElementById('fillupPrice').value),
+    gallons: parseFloat(document.getElementById('fillupGallons').value),
+    odometer: parseFloat(document.getElementById('fillupOdometer').value),
+    isPartialFill: document.getElementById('fillupPartial').checked,
+  };
+
+  const url = id
+    ? `/api/autos/${currentAutoId}/fillups/${id}`
+    : `/api/autos/${currentAutoId}/fillups`;
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+
+  if (res.ok) {
+    closeFillupModal();
+    await renderFillups();
+  } else {
+    const errEl = document.getElementById('fillupError');
+    errEl.textContent = 'Save failed. Please try again.';
+    errEl.style.display = 'block';
+  }
+});
+
+async function deleteFillup(id) {
+  const res = await fetch(`/api/autos/${currentAutoId}/fillups/${id}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  if (res.ok) await renderFillups();
+}
+
+// ── GPS ────────────────────────────────────────────────────────────────────
+function tryGps() {
+  if (!navigator.geolocation) return;
+  const status = document.getElementById('gpsStatus');
+  status.textContent = '(locating…)';
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      fillupGpsCoords.lat = pos.coords.latitude;
+      fillupGpsCoords.lng = pos.coords.longitude;
+      status.textContent = '(geocoding…)';
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`;
+        const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        const data = await r.json();
+        const loc = data.display_name || '';
+        if (loc && !document.getElementById('fillupLocation').value) {
+          document.getElementById('fillupLocation').value = loc;
+        }
+      } catch (_) {}
+      status.textContent = '';
+    },
+    () => { status.textContent = '(GPS unavailable)'; }
+  );
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadAutos();
+</script>
+</body>
+</html>
