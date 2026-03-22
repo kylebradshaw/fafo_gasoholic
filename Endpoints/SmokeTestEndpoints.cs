@@ -16,8 +16,7 @@ public static class SmokeTestEndpoints
         // Requires X-Smoke-Test-Secret header matching the configured SMOKE_TEST_SECRET.
         app.MapPost("/auth/dev-login", async (
             HttpContext ctx,
-            AppDbContext db,
-            Microsoft.AspNetCore.Http.IHeaderDictionary _) =>
+            AppDbContext db) =>
         {
             var provided = ctx.Request.Headers["X-Smoke-Test-Secret"].ToString();
             if (provided != secret)

@@ -16,8 +16,8 @@ trap cleanup EXIT
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-ok() { echo "  PASS  $1"; ((PASS++)); }
-fail() { echo "  FAIL  $1 — $2"; ((FAIL++)); }
+ok() { echo "  PASS  $1"; PASS=$((PASS + 1)); }
+fail() { echo "  FAIL  $1 — $2"; FAIL=$((FAIL + 1)); }
 
 assert_status() {
   local label="$1" expected="$2" actual="$3" body="$4"
