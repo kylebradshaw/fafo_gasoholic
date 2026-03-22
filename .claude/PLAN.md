@@ -485,6 +485,106 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 14 — Deployment Smoke Test Script
+
+**Goal:** A single executable script (`smoke-test.sh`) that exercises the full happy path against any deployed URL and exits non-zero on failure. Runnable after every deployment in CI/CD.
+
+**Problem:** The app requires email verification (magic link) so automated testing can't log in via the normal flow without intercepting email. Solution: add a protected `POST /auth/dev-login` endpoint gated behind `ASPNETCORE_ENVIRONMENT != Production` that creates a verified session without sending email.
+
+**Work:**
+
+1. **Dev-only login endpoint** — `POST /auth/dev-login` with `{ email }`:
+   - Only registered when `app.Environment.IsDevelopment()` is true
+   - Creates or finds user, marks `EmailVerified = true`, creates session
+   - Returns 200 `{ "status": "ok" }` with Set-Cookie
+
+2. **Smoke test environment** — run the app locally in `Development` mode for the smoke test, or:
+   - Alternative: add a `SMOKE_TEST_SECRET` env var; when present the dev-login endpoint is enabled even in Production (gated by a shared secret header)
+   - Chosen approach: `SMOKE_TEST_SECRET` header approach so the script can test the actual deployed container
+
+3. **`smoke-test.sh`** — executable bash script:
+   ```
+   Usage: ./smoke-test.sh <base-url> [smoke-test-secret]
+   Example: ./smoke-test.sh https://gasoholic.yellowcliff-a9ca470c.eastus.azurecontainerapps.io mysecret
+   ```
+   Steps:
+   - GET /health → assert 200 `{"status":"ok"}`
+   - POST /auth/dev-login → assert 200, capture cookie
+   - GET /auth/me → assert 200, check email field
+   - POST /api/autos → assert 201, capture autoId
+   - GET /api/autos → assert auto appears in list
+   - POST /api/autos/{autoId}/fillups (2 full fills) → assert 201 each
+   - GET /api/autos/{autoId}/fillups → assert MPG is computed (not null)
+   - DELETE /api/autos/{autoId}/fillups/{id} → assert 204
+   - PUT /api/autos/{autoId} → assert 200
+   - DELETE /api/autos/{autoId} → assert 204
+   - POST /auth/logout → assert 200
+   - GET /auth/me → assert 401
+   - Print PASS / FAIL summary
+
+4. **GitHub Actions integration** — add smoke test step to `azure-deploy.yml` after deployment:
+   ```yaml
+   - name: Smoke test
+     run: ./smoke-test.sh $APP_URL ${{ secrets.SMOKE_TEST_SECRET }}
+   ```
+
+5. **Bicep/env var** — add `SMOKE_TEST_SECRET` as a Container App env var, stored in Key Vault
+
+**Acceptance criteria:**
+- [ ] `./smoke-test.sh <live-url> <secret>` passes against the live deployment
+- [ ] `./smoke-test.sh <live-url> wrong-secret` fails at auth step
+- [ ] `./smoke-test.sh <live-url>` without secret fails gracefully (no dev-login available in prod without it)
+- [ ] Script exits 0 on all-pass, non-zero if any step fails
+- [ ] All steps print a clear PASS/FAIL line with the HTTP response
+- [ ] GitHub Actions workflow includes the smoke test step after image deploy
+- [ ] git commit created: `feat: task 14 — deployment smoke test script`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
+### Task 15 — Persistent Storage (Fix Ephemeral SQLite)
+
+**Goal:** Replace ephemeral SQLite at `/tmp/gasoholic.db` with a persistent database so data and sessions survive Container App restarts and deployments.
+
+**Root cause:** Container Apps consumption plan scales to zero after ~5 minutes of inactivity, wiping the in-memory session store and the SQLite file at `/tmp`. Every cold start creates a fresh empty database — user accounts and session cookies are lost.
+
+**Architecture options evaluated:**
+| Option | Cost | Feasibility |
+|---|---|---|
+| Azure SQL (DTU tiers) | ~$5/mo | Blocked by new-account quota in East US + East US 2 |
+| Azure SQL (serverless) | ~$0 idle | Same quota issue |
+| Azure PostgreSQL Flexible | ~$15/mo | Try West US 2 or West Europe |
+| Azure Files (SQLite) | ~$2/mo | SMB port 445 blocked on consumption plan |
+| Neon.tech Postgres | Free tier | External, no Azure infra needed |
+| minReplicas: 1 + ephemeral | ~$15/mo | Prevents scale-to-zero but data still lost on redeploy |
+
+**Chosen approach:** Try Azure SQL in West US 2 (different region), fall back to Neon.tech free Postgres if quota-blocked.
+
+**Work:**
+
+1. **Azure SQL in West US 2** — provision `gasoholic-sql` server + `gasoholic` database (Serverless, S0 or Free tier if available)
+2. **Connection string** — store in Key Vault as `SqlConnection`; Container App reads as secret ref
+3. **`DATABASE_PROVIDER=sqlserver`** — update Container App env var
+4. **EF Core migrations** — run `dotnet ef database update` against Azure SQL on deploy
+5. **Session cache** — `AddDistributedSqlServerCache` already in code; create `SessionCache` table
+6. **Update `infra/main.bicep`** — add SQL server + database + connection string KV secret
+7. **Update `deploy.sh`** — run migrations after Bicep deploy
+8. **Firewall** — allow Azure services to connect to the SQL server
+
+**Acceptance criteria:**
+- [ ] Azure SQL (or Postgres) provisioned and accessible from the Container App
+- [ ] `DATABASE_PROVIDER=sqlserver` set on Container App
+- [ ] EF Core migrations applied (tables: Users, Autos, Fillups, VerificationTokens, SessionCache, __EFMigrationsHistory)
+- [ ] Login, add auto, restart Container App revision, data persists
+- [ ] Sessions survive Container App cold-start (new revision doesn't lose auth)
+- [ ] Smoke test (`./smoke-test.sh`) passes end-to-end
+- [ ] git commit created: `feat: task 15 — persistent database storage`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**
