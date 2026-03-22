@@ -29,13 +29,17 @@ else
 
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromDays(7);
+    options.IdleTimeout = TimeSpan.FromDays(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.MaxAge = TimeSpan.FromDays(30);  // persistent — survives browser close
     options.Cookie.SecurePolicy = isProd
         ? CookieSecurePolicy.Always
         : CookieSecurePolicy.None;
 });
+
+builder.Services.AddSingleton<IVerificationEmailSender, VerificationEmailSender>();
+builder.Services.AddHostedService<VerificationCleanupService>();
 
 var corsOrigins = (Environment.GetEnvironmentVariable("CORS_ORIGINS")
     ?? builder.Configuration["CorsOrigins"]

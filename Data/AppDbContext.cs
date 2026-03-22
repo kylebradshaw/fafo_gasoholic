@@ -7,6 +7,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Auto> Autos => Set<Auto>();
     public DbSet<Fillup> Fillups => Set<Fillup>();
+    public DbSet<VerificationToken> VerificationTokens => Set<VerificationToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,5 +30,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Fillup>()
             .Property(f => f.FuelType)
             .HasConversion<string>();
+
+        modelBuilder.Entity<VerificationToken>()
+            .HasOne(vt => vt.User)
+            .WithMany(u => u.VerificationTokens)
+            .HasForeignKey(vt => vt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VerificationToken>()
+            .HasIndex(vt => vt.Token)
+            .IsUnique();
     }
 }

@@ -466,20 +466,20 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 ---
 
 **Acceptance criteria:**
-- [ ] New user login → 202 `{"status":"pending"}`; magic link email arrives via ACS
-- [ ] Clicking magic link sets 30-day persistent cookie and redirects to `/app.html`
-- [ ] Clicking same magic link a second time → 400 (token already used)
-- [ ] Token expired after 24hr → `GET /auth/verify` returns 400 with `{"error":"token_expired"}`
-- [ ] Existing users in DB are all `EmailVerified = true` after migration — no re-verification required
-- [ ] Unverified user cannot reach `/app.html` (hard gate redirects to `index.html`)
-- [ ] 4th resend within 1 hour → 429 `{"error":"too_many_requests"}`; button shows cooldown message
-- [ ] Unverified user created 8 days ago → deleted by cleanup service
-- [ ] Logout clears session; subsequent `GET /auth/me` returns 401
-- [ ] ACS `Microsoft.Communication/emailServices` resource present in `infra/main.bicep`
-- [ ] ACS connection string stored in Key Vault; Container App pulls it as a secret ref
-- [ ] Local dev works with no ACS connection string: magic link logged to console, no email sent
-- [ ] `dotnet build` passes with new packages
-- [ ] git commit created: `feat: task 13 — email verification via ACS magic link`
+- [x] New user login → 202 `{"status":"pending"}`; magic link email arrives via ACS
+- [x] Clicking magic link sets 30-day persistent cookie and redirects to `/app.html`
+- [x] Clicking same magic link a second time → 400 (token already used)
+- [x] Token expired after 24hr → `GET /auth/verify` returns 400 with `{"error":"token_expired"}`
+- [x] Existing users in DB are all `EmailVerified = true` after migration — no re-verification required
+- [x] Unverified user cannot reach `/app.html` (hard gate redirects to `index.html`)
+- [x] 4th resend within 1 hour → 429 `{"error":"too_many_requests"}`; button shows cooldown message
+- [x] Unverified user created 8 days ago → deleted by cleanup service
+- [x] Logout clears session; subsequent `GET /auth/me` returns 401
+- [x] ACS `Microsoft.Communication/emailServices` resource present in `infra/main.bicep`
+- [x] ACS connection string stored in Key Vault; Container App pulls it as a secret ref
+- [x] Local dev works with no ACS connection string: magic link logged to console, no email sent
+- [x] `dotnet build` passes with new packages
+- [x] git commit created: `feat: task 13 — email verification via ACS magic link`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 
