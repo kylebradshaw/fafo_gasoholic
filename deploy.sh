@@ -85,15 +85,13 @@ if [[ "$APP_ONLY" == false ]]; then
     --parameters appName="$APP_NAME" \
     --output json)
 
-  APP_URL=$(echo "$DEPLOY_OUT"      | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['appUrl']['value'])")
-  ACR_SERVER=$(echo "$DEPLOY_OUT"   | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrLoginServer']['value'])")
-  STORAGE_NAME=$(echo "$DEPLOY_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['storageAccountName']['value'])")
+  APP_URL=$(echo "$DEPLOY_OUT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['appUrl']['value'])")
+  ACR_SERVER=$(echo "$DEPLOY_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrLoginServer']['value'])")
 
   # Save outputs for --app-only runs
   {
     echo "APP_URL='${APP_URL}'"
     echo "ACR_SERVER='${ACR_SERVER}'"
-    echo "STORAGE_NAME='${STORAGE_NAME}'"
   } > "$SECRETS_FILE"
   chmod 600 "$SECRETS_FILE"
 
