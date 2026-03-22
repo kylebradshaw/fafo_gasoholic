@@ -21,4 +21,8 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 COPY --from=build /app/publish .
+# Run as root so the app can write to the Azure Files SMB volume mounted at /data.
+# The aspnet base image defaults to non-root (uid 1654); Azure Files SMB mounts
+# default to root ownership which blocks writes from unprivileged users.
+USER root
 ENTRYPOINT ["dotnet", "gasoholic.dll"]

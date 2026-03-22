@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var dbProvider = (Environment.GetEnvironmentVariable("DATABASE_PROVIDER") ?? "sqlite").ToLower();
+var isProd = builder.Environment.IsProduction();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -31,7 +32,7 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromDays(7);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SecurePolicy = dbProvider == "sqlserver"
+    options.Cookie.SecurePolicy = isProd
         ? CookieSecurePolicy.Always
         : CookieSecurePolicy.None;
 });

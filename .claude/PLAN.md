@@ -309,9 +309,180 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 
 ---
 
+### Task 11 — Azure Cloud Deployment (Infrastructure & Code)
+
+**Goal:** Make the app deployable to Azure Container Apps with Azure SQL Database, configurable via environment variables, with GitHub Actions CI/CD and Bicep IaC. *(Architecture pivoted from App Service to Container Apps due to new-account App Service quota restrictions.)*
+
+**Key cloud migration problems solved:**
+
+| Problem | Local state | Cloud fix |
+|---|---|---|
+| SQLite on ephemeral disk | Works fine | Switch to Azure SQL Database in prod |
+| In-memory session cache | Works fine | DB-backed distributed session (`Microsoft.Extensions.Caching.SqlServer`) |
+| Hardcoded CORS origins | `localhost` only | `CORS_ORIGINS` env var |
+| `EnsureCreated()` for DB init | OK for dev | `Database.Migrate()` on startup |
+| No secrets management | `appsettings.json` | Azure Key Vault + managed identity |
+
+**Actual architecture delivered:**
+
+1. **Multi-provider database** — `DATABASE_PROVIDER` env var switches between `sqlite` (dev) and `sqlserver` (prod); connection strings keyed `DefaultConnection` / `SqlServer`
+2. **DB-backed session** — `AddDistributedSqlServerCache` in prod, `AddDistributedMemoryCache` in dev
+3. **Configurable CORS** — `CORS_ORIGINS` env var, comma-separated
+4. **Dockerfile** — multi-stage build with `BUILDPLATFORM`/`TARGETPLATFORM` BuildKit ARGs to support Apple Silicon natively; exposes port 8080
+5. **Bicep IaC (`infra/main.bicep`)** — provisions: ACR (Basic), Azure SQL (Basic 5 DTU), Key Vault (RBAC, managed identity secret pull), Container Apps Environment (consumption, scales to zero), Container App (system-assigned identity, ACR pull, KV secret ref). Primary region East US; SQL falls back to East US 2 only when East US is at capacity.
+6. **GitHub Actions (`.github/workflows/azure-deploy.yml`)** — push to `main` triggers: build image → push to ACR → `az containerapp update`
+7. **`deploy.sh`** — single CLI script covering full provision + image deploy; `--infra-only` / `--app-only` flags; reads/writes `.deploy-secrets` (gitignored)
+
+**Acceptance criteria:**
+- [x] `docker buildx build --platform linux/arm64 -t gasoholic --load .` succeeds
+- [x] `docker run --platform linux/arm64 -e DATABASE_PROVIDER=sqlite -e "ConnectionStrings__DefaultConnection=Data Source=/tmp/gasoholic.db" -p 8080:8080 gasoholic` starts and `/health` returns `{"status":"ok"}`
+- [x] `infra/main.bicep` passes `az bicep build` validation without errors
+- [x] GitHub Actions workflow YAML is valid (manual review)
+- [x] `CORS_ORIGINS` env var correctly gates allowed origins
+- [x] `Database.Migrate()` is called on startup (not `EnsureCreated`)
+- [x] `DATABASE_PROVIDER=sqlserver` path compiles and wires SQL Server provider + DB-backed session
+- [x] `deploy.sh` is executable and documents all steps via `--help` or inline comments
+- [x] `.deploy-secrets` and `infra/main.json` are gitignored
+- [x] git commit created: `feat: task 11 — azure cloud deployment`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
+### Task 12 — Container Deployment Verification
+
+**Goal:** Execute `deploy.sh` against a clean Azure resource group, verify the live Container App serves real traffic, and confirm GitHub Actions CI/CD completes a full push-to-deploy cycle.
+
+**Pre-conditions:**
+- `gasoholic-rg` resource group exists in East US (user-created)
+- Azure CLI authenticated (`az login`)
+- `AZURE_CREDENTIALS` secret set in GitHub repo settings
+- Any zombie resources from prior failed attempts are cleaned up before starting
+
+**Work:**
+
+1. **Clean state** — delete any partial resources in `gasoholic-rg` that conflict (SQL servers, old ACR, orphaned Container Apps environments)
+2. **Full provision** — run `./deploy.sh` end-to-end; capture outputs (app URL, ACR server, SQL FQDN)
+3. **DB migration** — confirm `deploy.sh` ran `dotnet ef database update` and created `SessionCache` table against Azure SQL
+4. **Smoke test** — verify live app URL serves the login page and `/auth/me` returns 401
+5. **CI/CD round-trip** — make a trivial code change, push to `main`, confirm GitHub Actions workflow completes and new image is live
+6. **Update `AZURE.md`** — record the confirmed live URL and any operational notes
+
+**Acceptance criteria:**
+- [ ] `./deploy.sh` completes without error from a clean state
+- [ ] `curl https://<appName>.{env-domain}/health` returns `{"status":"ok"}`
+- [ ] `curl https://<appName>.{env-domain}/auth/me` returns HTTP 401 (app is live and routing correctly)
+- [ ] Login page renders in a browser at the live URL
+- [ ] Azure SQL `gasoholic` database contains tables: `Users`, `Autos`, `Fillups`, `SessionCache`, `__EFMigrationsHistory`
+- [ ] GitHub Actions run triggered by a push to `main` completes successfully (green checkmark)
+- [ ] New image tag is reflected in the Container App revision after the Actions run
+- [ ] `.claude/AZURE.md` updated with confirmed live URL and deployment date
+- [ ] git commit created: `feat: task 12 — container deployment verification`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
+### Task 13 — Email Verification via Azure Communication Services
+
+**Goal:** Require users to verify their email address before gaining access. On login, a magic link is emailed via ACS; clicking it creates a 30-day persistent session. Existing users are pre-verified. Hard gate: unverified users see only a holding page.
+
+**Key decisions:**
+| Concern | Choice |
+|---|---|
+| Email provider | Azure Communication Services (ACS) — free tier, 2,000 emails/mo |
+| Mechanism | Magic link (one-time URL, 24hr expiry) |
+| Session model | Hard gate — no session until verified; 30-day persistent cookie after |
+| Existing users | Auto-marked verified on migration (no re-verification required) |
+| Rate limiting | Max 3 resend requests per hour per email address |
+| Stale cleanup | Unverified users with no activity purged after 7 days |
+
+---
+
+**Work:**
+
+1. **Data model**
+   - Add `EmailVerified bool` column to `Users` (default `true` — migration auto-verifies all existing rows)
+   - Add `VerificationTokens` table: `Id int PK`, `UserId int FK`, `Token string` (GUID, unique index), `CreatedAt datetime`, `ExpiresAt datetime` (24hr), `UsedAt datetime?`
+   - New EF migration: `AddEmailVerification`
+
+2. **Azure Communication Services (ACS) provisioning**
+   - Add to `infra/main.bicep`:
+     - `Microsoft.Communication/emailServices` (free tier) in `eastus`
+     - `Microsoft.Communication/emailServices/domains` with `domainManagement: 'AzureManaged'` — zero DNS config, Azure provides the sending domain
+     - ACS connection string stored in Key Vault as secret `AcsConnection`
+     - New `secretRef` in Container App pointing to `AcsConnection`
+   - Add env var `ConnectionStrings__ACS` to Container App (from KV secret)
+   - `deploy.sh`: add ACS connection string extraction step after Bicep outputs
+
+3. **Email sending service**
+   - Add package `Azure.Communication.Email`
+   - Register `EmailClient` from `ConnectionStrings__ACS` (no-op stub when env var absent — local dev skips email)
+   - `IVerificationEmailSender` interface with `SendMagicLinkAsync(email, token)`:
+     - In prod: uses ACS `EmailClient.SendAsync` with from address on ACS managed domain
+     - In dev (no ACS connection string): writes magic link to console/log instead
+
+4. **Auth flow changes**
+   - `POST /auth/login` — modified:
+     - Look up or create user
+     - If `EmailVerified = false` and user was just created or token is expired: generate new `VerificationToken` (GUID), save, call `IVerificationEmailSender.SendMagicLinkAsync`
+     - If `EmailVerified = true`: create session as before
+     - If `EmailVerified = false` and valid token exists: return 202 `{"status":"pending"}` (don't resend automatically)
+     - Response shape: `{"status": "ok"}` (verified) or `{"status": "pending"}` (check email)
+   - `GET /auth/verify?token=<guid>` — new endpoint:
+     - Look up token; reject if not found, expired (`ExpiresAt < now`), or already used (`UsedAt != null`)
+     - Mark token `UsedAt = now`, set `User.EmailVerified = true`
+     - Create session; set cookie `SameSite=Strict, HttpOnly, Secure, MaxAge=30days` (persistent)
+     - Redirect to `/app.html`
+   - `POST /auth/resend` — new endpoint:
+     - Body: `{ email }`
+     - Rate limit: count tokens created for this email in last 1hr; if ≥ 3, return 429 `{"error":"too_many_requests"}`
+     - Otherwise: generate new token, invalidate previous unused tokens for this user, send email
+   - `RequireAuth` middleware: additionally check `User.EmailVerified = true`; return 403 with `{"error":"unverified"}` if not
+
+5. **Session persistence — 30-day cookie**
+   - Change session cookie options: `IsPersistent = true`, `MaxAge = TimeSpan.FromDays(30)`
+   - SQL Server session cache sliding expiration: 30 days
+   - Local dev (memory cache) unchanged
+
+6. **Background cleanup (hosted service)**
+   - `VerificationCleanupService : BackgroundService` runs daily:
+     - Delete `VerificationTokens` where `ExpiresAt < now - 7 days` (expired and stale)
+     - Delete `Users` where `EmailVerified = false` and `CreatedAt < now - 7 days` (never verified, purge orphans)
+
+7. **UI changes**
+   - `index.html` — login form:
+     - On `{"status":"pending"}` response: hide form, show holding state: *"Check your inbox — we sent a link to `{email}`."* + **Resend** button
+     - Resend button calls `POST /auth/resend`, shows cooldown message on 429
+   - `app.html` — app shell:
+     - Logout button: already exists (Task 7), ensure it's visually clear in the nav; clicking calls `POST /auth/logout` → redirect to `index.html` (clearing 30-day cookie)
+   - New: if `GET /auth/me` returns 403 `unverified` (edge case: session exists but flag cleared), redirect to `index.html`
+
+---
+
+**Acceptance criteria:**
+- [ ] New user login → 202 `{"status":"pending"}`; magic link email arrives via ACS
+- [ ] Clicking magic link sets 30-day persistent cookie and redirects to `/app.html`
+- [ ] Clicking same magic link a second time → 400 (token already used)
+- [ ] Token expired after 24hr → `GET /auth/verify` returns 400 with `{"error":"token_expired"}`
+- [ ] Existing users in DB are all `EmailVerified = true` after migration — no re-verification required
+- [ ] Unverified user cannot reach `/app.html` (hard gate redirects to `index.html`)
+- [ ] 4th resend within 1 hour → 429 `{"error":"too_many_requests"}`; button shows cooldown message
+- [ ] Unverified user created 8 days ago → deleted by cleanup service
+- [ ] Logout clears session; subsequent `GET /auth/me` returns 401
+- [ ] ACS `Microsoft.Communication/emailServices` resource present in `infra/main.bicep`
+- [ ] ACS connection string stored in Key Vault; Container App pulls it as a secret ref
+- [ ] Local dev works with no ACS connection string: magic link logged to console, no email sent
+- [ ] `dotnet build` passes with new packages
+- [ ] git commit created: `feat: task 13 — email verification via ACS magic link`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
-**Start the full sequential loop (Tasks 5–10) with:**
+**Start the full sequential loop (first tasks with unchecked criteria) with:**
 ```
 /ralph-loop "$(cat .claude/PLAN.md)" --completion-promise "TESTS COMPLETE"
 ```

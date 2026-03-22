@@ -1,142 +1,148 @@
-@description('Base name for all resources (e.g. "gasoholic"). Must be globally unique for SQL server and Key Vault.')
+@description('Base name for all resources. Must be globally unique (used for ACR, storage account).')
 param appName string
 
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
 
-@description('SQL Server administrator login username.')
-param sqlAdminLogin string = 'gasoadmin'
+// Derived names — all resources in the same East US location
+var acrName = '${replace(appName, '-', '')}acr'       // ACR: alphanumeric only
+var storageName = '${replace(appName, '-', '')}data'   // Storage: alphanumeric only, ≤24 chars
+var envName = '${appName}-env'
+var shareQuotaGiB = 1
 
-@description('SQL Server administrator password. Stored in Key Vault — never logged.')
-@secure()
-param sqlAdminPassword string
+// ── Azure Container Registry (Basic — ~$5/mo) ────────────────────────────────
 
-// ── App Service Plan (Linux B1 — ~$13/mo) ───────────────────────────────────
-
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: '${appName}-plan'
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+  name: acrName
   location: location
-  kind: 'linux'
-  sku: {
-    name: 'B1'
-    tier: 'Basic'
-  }
+  sku: { name: 'Basic' }
   properties: {
-    reserved: true
+    adminUserEnabled: true   // used by Container App to pull images
   }
 }
 
-// ── Web App ──────────────────────────────────────────────────────────────────
+// ── Storage Account + Azure Files share (Standard LRS — ~$0.02/GiB/mo) ──────
+// Replaces Azure SQL: SQLite database file lives on the mounted file share.
 
-resource webApp 'Microsoft.Web/sites@2023-12-01' = {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageName
+  location: location
+  sku: { name: 'Standard_LRS' }
+  kind: 'StorageV2'
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+    supportsHttpsTrafficOnly: true
+  }
+}
+
+resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-05-01' = {
+  parent: fileService
+  name: 'data'
+  properties: {
+    shareQuota: shareQuotaGiB
+    enabledProtocols: 'SMB'
+  }
+}
+
+// ── Container Apps Environment (free — consumption plan) ─────────────────────
+
+resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: envName
+  location: location
+  properties: {}
+}
+
+// Link the Azure Files share to the managed environment so Container Apps can mount it.
+resource envStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+  parent: containerEnv
+  name: 'gasoholic-data'
+  properties: {
+    azureFile: {
+      accountName: storageAccount.name
+      accountKey: storageAccount.listKeys().keys[0].value
+      shareName: fileShare.name
+      accessMode: 'ReadWrite'
+    }
+  }
+}
+
+// ── Container App ────────────────────────────────────────────────────────────
+
+var acrPassword = acr.listCredentials().passwords[0].value
+
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
-  identity: {
-    type: 'SystemAssigned'
-  }
   properties: {
-    serverFarmId: appServicePlan.id
-    httpsOnly: true
-    siteConfig: {
-      linuxFxVersion: 'DOTNETCORE|10.0'
-      alwaysOn: true
-      appSettings: [
+    managedEnvironmentId: containerEnv.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'http'
+      }
+      registries: [
         {
-          name: 'DATABASE_PROVIDER'
-          value: 'sqlserver'
+          server: acr.properties.loginServer
+          username: acr.listCredentials().username
+          passwordSecretRef: 'acr-password'
         }
+      ]
+      secrets: [
         {
-          // Key Vault reference — App Service resolves this at runtime.
-          // The app reads it as a plain connection string; the vault secret never leaves Azure.
-          name: 'ConnectionStrings__SqlServer'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVault.properties.vaultUri}secrets/SqlConnection/)'
-        }
-        {
-          name: 'CORS_ORIGINS'
-          value: 'https://${appName}.azurewebsites.net'
-        }
-        {
-          name: 'ASPNETCORE_ENVIRONMENT'
-          value: 'Production'
+          name: 'acr-password'
+          value: acrPassword
         }
       ]
     }
-  }
-}
-
-// ── Azure SQL Server + Database (Basic 5 DTU — ~$5/mo) ──────────────────────
-
-resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
-  name: '${appName}-sql'
-  location: location
-  properties: {
-    administratorLogin: sqlAdminLogin
-    administratorLoginPassword: sqlAdminPassword
-    minimalTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'
-  }
-}
-
-resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
-  parent: sqlServer
-  name: appName
-  location: location
-  sku: {
-    name: 'Basic'
-    tier: 'Basic'
-  }
-}
-
-// Allow the App Service outbound IPs to reach SQL — add specific IPs after first deploy.
-// This rule is intentionally permissive for initial provisioning; tighten it after.
-resource sqlFirewallAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
-  parent: sqlServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// ── Key Vault ────────────────────────────────────────────────────────────────
-
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: '${appName}-kv'
-  location: location
-  properties: {
-    sku: {
-      family: 'A'
-      name: 'standard'
+    template: {
+      volumes: [
+        {
+          name: 'data'
+          storageType: 'AzureFile'
+          storageName: envStorage.name
+        }
+      ]
+      containers: [
+        {
+          name: appName
+          // Placeholder image — CI replaces this on first push
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          env: [
+            { name: 'DATABASE_PROVIDER',                       value: 'sqlite' }
+            { name: 'ConnectionStrings__DefaultConnection',    value: 'Data Source=/data/gasoholic.db' }
+            { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain}' }
+            { name: 'ASPNETCORE_ENVIRONMENT',                  value: 'Production' }
+            { name: 'ASPNETCORE_URLS',                         value: 'http://+:8080' }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+          volumeMounts: [
+            {
+              volumeName: 'data'
+              mountPath: '/data'
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 0   // scales to zero when idle — free when not in use
+        maxReplicas: 1
+      }
     }
-    tenantId: subscription().tenantId
-    enableRbacAuthorization: true
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 7
-  }
-}
-
-// Store the SQL connection string as a Key Vault secret
-resource sqlConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'SqlConnection'
-  properties: {
-    value: 'Server=${sqlServer.properties.fullyQualifiedDomainName};Database=${appName};User Id=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;'
-  }
-}
-
-// Grant the Web App's managed identity "Key Vault Secrets User" role (read secrets)
-resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, webApp.id, '4633458b-17de-408a-b874-0445c86b69e6')
-  scope: keyVault
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
-    principalId: webApp.identity.principalId
-    principalType: 'ServicePrincipal'
   }
 }
 
 // ── Outputs ──────────────────────────────────────────────────────────────────
 
-output appUrl string = 'https://${webApp.properties.defaultHostName}'
-output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
-output keyVaultUri string = keyVault.properties.vaultUri
+output appUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output acrLoginServer string = acr.properties.loginServer
+output storageAccountName string = storageAccount.name
