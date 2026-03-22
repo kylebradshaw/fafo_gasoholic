@@ -1,4 +1,30 @@
 {
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.nuget.org)",
+      "Bash(dotnet build:*)",
+      "Bash(az bicep:*)",
+      "Bash(docker --version)",
+      "Bash(docker info:*)",
+      "Bash(docker build:*)",
+      "Bash(curl -s \"https://mcr.microsoft.com/v2/dotnet/aspnet/tags/list\")",
+      "Bash(curl -s \"https://mcr.microsoft.com/v2/dotnet/sdk/tags/list\")",
+      "Bash(python3 -c \"import sys,json; tags=[t for t in json.load\\(sys.stdin\\)[''''tags''''] if t.startswith\\(''''10.0''''\\)]; print\\(''''\\\\n''''.join\\(sorted\\(tags\\)[:40]\\)\\)\")",
+      "Bash(docker run:*)",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(curl:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(1:*)",
+      "Bash(docker buildx:*)",
+      "Bash(git add:*)",
+      "Bash(az account:*)",
+      "Bash(az provider:*)",
+      "Bash(until az:*)",
+      "Bash(az deployment:*)",
+      "Bash(az sql:*)"
+    ]
+  },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true

@@ -1,0 +1,3 @@
+http://openui.com/playground
+
+> interface for viewing and entering gas fillups for one or more different automobiles. keep the multiple options hidden, for the screen only show 1 auto, some aggregate data, could be all time, ytd, past month, past week (based on historical fillup entries). have a select box in the header to allow switching the vehicle context. have a log fillup quick entry at the top (smallest vertical height as possible, go horizontal w/ data entry, but be responsive)  gas type, (w/ per auto default preselected) fuel cost, odometer before fillup and gallons pumped, also a check box for "topped off" or filled as this might affect mileage calulations

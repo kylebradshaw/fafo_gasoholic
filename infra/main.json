@@ -5,14 +5,14 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "10923228916080401822"
+      "templateHash": "18246194509549789619"
     }
   },
   "parameters": {
     "appName": {
       "type": "string",
       "metadata": {
-        "description": "Base name for all resources (e.g. \"gasoholic\"). Must be globally unique for SQL server and Key Vault."
+        "description": "Base name for all resources. Must be globally unique (used for ACR, Key Vault)."
       }
     },
     "location": {
@@ -21,116 +21,66 @@
       "metadata": {
         "description": "Azure region for all resources."
       }
-    },
-    "sqlAdminLogin": {
-      "type": "string",
-      "defaultValue": "gasoadmin",
-      "metadata": {
-        "description": "SQL Server administrator login username."
-      }
-    },
-    "sqlAdminPassword": {
-      "type": "securestring",
-      "metadata": {
-        "description": "SQL Server administrator password. Stored in Key Vault — never logged."
-      }
     }
+  },
+  "variables": {
+    "acrName": "[format('{0}acr', replace(parameters('appName'), '-', ''))]",
+    "kvName": "[format('{0}-kv', parameters('appName'))]",
+    "envName": "[format('{0}-env', parameters('appName'))]"
   },
   "resources": [
     {
-      "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2023-12-01",
-      "name": "[format('{0}-plan', parameters('appName'))]",
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('acrName')]",
       "location": "[parameters('location')]",
-      "kind": "linux",
       "sku": {
-        "name": "B1",
-        "tier": "Basic"
+        "name": "Basic"
       },
       "properties": {
-        "reserved": true
+        "adminUserEnabled": true
       }
     },
     {
-      "type": "Microsoft.Web/sites",
-      "apiVersion": "2023-12-01",
-      "name": "[parameters('appName')]",
-      "location": "[parameters('location')]",
-      "identity": {
-        "type": "SystemAssigned"
-      },
+      "type": "Microsoft.Communication/emailServices",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-acs', parameters('appName'))]",
+      "location": "global",
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('appName')))]",
-        "httpsOnly": true,
-        "siteConfig": {
-          "linuxFxVersion": "DOTNETCORE|10.0",
-          "alwaysOn": true,
-          "appSettings": [
-            {
-              "name": "DATABASE_PROVIDER",
-              "value": "sqlserver"
-            },
-            {
-              "name": "ConnectionStrings__SqlServer",
-              "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/SqlConnection/)', reference(resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName'))), '2023-07-01').vaultUri)]"
-            },
-            {
-              "name": "CORS_ORIGINS",
-              "value": "[format('https://{0}.azurewebsites.net', parameters('appName'))]"
-            },
-            {
-              "name": "ASPNETCORE_ENVIRONMENT",
-              "value": "Production"
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('appName')))]",
-        "[resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName')))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Sql/servers",
-      "apiVersion": "2023-08-01-preview",
-      "name": "[format('{0}-sql', parameters('appName'))]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "administratorLogin": "[parameters('sqlAdminLogin')]",
-        "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
-        "minimalTlsVersion": "1.2",
-        "publicNetworkAccess": "Enabled"
+        "dataLocation": "UnitedStates"
       }
     },
     {
-      "type": "Microsoft.Sql/servers/databases",
-      "apiVersion": "2023-08-01-preview",
-      "name": "[format('{0}/{1}', format('{0}-sql', parameters('appName')), parameters('appName'))]",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "Basic",
-        "tier": "Basic"
+      "type": "Microsoft.Communication/emailServices/domains",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}/{1}', format('{0}-acs', parameters('appName')), 'AzureManagedDomain')]",
+      "location": "global",
+      "properties": {
+        "domainManagement": "AzureManaged"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', parameters('appName')))]"
+        "[resourceId('Microsoft.Communication/emailServices', format('{0}-acs', parameters('appName')))]"
       ]
     },
     {
-      "type": "Microsoft.Sql/servers/firewallRules",
-      "apiVersion": "2023-08-01-preview",
-      "name": "[format('{0}/{1}', format('{0}-sql', parameters('appName')), 'AllowAzureServices')]",
+      "type": "Microsoft.Communication/communicationServices",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-comms', parameters('appName'))]",
+      "location": "global",
       "properties": {
-        "startIpAddress": "0.0.0.0",
-        "endIpAddress": "0.0.0.0"
+        "dataLocation": "UnitedStates",
+        "linkedDomains": [
+          "[resourceId('Microsoft.Communication/emailServices/domains', format('{0}-acs', parameters('appName')), 'AzureManagedDomain')]"
+        ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', parameters('appName')))]"
+        "[resourceId('Microsoft.Communication/emailServices/domains', format('{0}-acs', parameters('appName')), 'AzureManagedDomain')]"
       ]
     },
     {
       "type": "Microsoft.KeyVault/vaults",
       "apiVersion": "2023-07-01",
-      "name": "[format('{0}-kv', parameters('appName'))]",
+      "name": "[variables('kvName')]",
       "location": "[parameters('location')]",
       "properties": {
         "sku": {
@@ -146,43 +96,155 @@
     {
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2023-07-01",
-      "name": "[format('{0}/{1}', format('{0}-kv', parameters('appName')), 'SqlConnection')]",
+      "name": "[format('{0}/{1}', variables('kvName'), 'AcsConnection')]",
       "properties": {
-        "value": "[format('Server={0};Database={1};User Id={2};Password={3};Encrypt=true;TrustServerCertificate=false;', reference(resourceId('Microsoft.Sql/servers', format('{0}-sql', parameters('appName'))), '2023-08-01-preview').fullyQualifiedDomainName, parameters('appName'), parameters('sqlAdminLogin'), parameters('sqlAdminPassword'))]"
+        "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', format('{0}-comms', parameters('appName'))), '2023-04-01').primaryConnectionString]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName')))]",
-        "[resourceId('Microsoft.Sql/servers', format('{0}-sql', parameters('appName')))]"
+        "[resourceId('Microsoft.Communication/communicationServices', format('{0}-comms', parameters('appName')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'AcsSenderDomain')]",
+      "properties": {
+        "value": "[reference(resourceId('Microsoft.Communication/emailServices/domains', format('{0}-acs', parameters('appName')), 'AzureManagedDomain'), '2023-04-01').mailFromSenderDomain]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Communication/emailServices/domains', format('{0}-acs', parameters('appName')), 'AzureManagedDomain')]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('envName')]",
+      "location": "[parameters('location')]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('appName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('envName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "http"
+          },
+          "registries": [
+            {
+              "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-07-01').loginServer]",
+              "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-07-01').username]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "acr-password",
+              "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-07-01').passwords[0].value]"
+            },
+            {
+              "name": "acs-connection",
+              "keyVaultUrl": "[format('{0}secrets/AcsConnection', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
+              "identity": "system"
+            },
+            {
+              "name": "acs-sender-domain",
+              "keyVaultUrl": "[format('{0}secrets/AcsSenderDomain', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
+              "identity": "system"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('appName')]",
+              "image": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+              "env": [
+                {
+                  "name": "DATABASE_PROVIDER",
+                  "value": "sqlite"
+                },
+                {
+                  "name": "ConnectionStrings__DefaultConnection",
+                  "value": "Data Source=/tmp/gasoholic.db"
+                },
+                {
+                  "name": "ConnectionStrings__ACS",
+                  "secretRef": "acs-connection"
+                },
+                {
+                  "name": "AcsSenderDomain",
+                  "secretRef": "acs-sender-domain"
+                },
+                {
+                  "name": "CORS_ORIGINS",
+                  "value": "[format('https://{0}.{1}', parameters('appName'), reference(resourceId('Microsoft.App/managedEnvironments', variables('envName')), '2024-03-01').defaultDomain)]"
+                },
+                {
+                  "name": "ASPNETCORE_ENVIRONMENT",
+                  "value": "Production"
+                },
+                {
+                  "name": "ASPNETCORE_URLS",
+                  "value": "http://+:8080"
+                }
+              ],
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              }
+            }
+          ],
+          "scale": {
+            "minReplicas": 0,
+            "maxReplicas": 1
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('envName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
       ]
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName')))]",
-      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName'))), resourceId('Microsoft.Web/sites', parameters('appName')), '4633458b-17de-408a-b874-0445c86b69e6')]",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), resourceId('Microsoft.App/containerApps', parameters('appName')), '4633458b-17de-408a-b874-0445c86b69e6')]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
-        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2023-12-01', 'full').identity.principalId]",
+        "principalId": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName')))]",
-        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
       ]
     }
   ],
   "outputs": {
     "appUrl": {
       "type": "string",
-      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('appName')), '2023-12-01').defaultHostName)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01').configuration.ingress.fqdn)]"
     },
-    "sqlServerFqdn": {
+    "acrLoginServer": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Sql/servers', format('{0}-sql', parameters('appName'))), '2023-08-01-preview').fullyQualifiedDomainName]"
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-07-01').loginServer]"
     },
     "keyVaultUri": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('{0}-kv', parameters('appName'))), '2023-07-01').vaultUri]"
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri]"
     }
   }
 }
