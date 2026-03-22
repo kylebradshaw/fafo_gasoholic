@@ -11,6 +11,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
     else
         options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    // Suppress false-positive warning caused by EF tools/runtime version mismatch
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 if (dbProvider == "sqlserver")

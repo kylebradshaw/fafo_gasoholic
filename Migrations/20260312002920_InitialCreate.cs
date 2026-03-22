@@ -15,9 +15,9 @@ namespace gasoholic.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Email = table.Column<string>(type: "TEXT", nullable: false)
+                    Email = table.Column<string>(maxLength: 256, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -28,13 +28,13 @@ namespace gasoholic.Migrations
                 name: "Autos",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Brand = table.Column<string>(type: "TEXT", nullable: false),
-                    Model = table.Column<string>(type: "TEXT", nullable: false),
-                    Plate = table.Column<string>(type: "TEXT", nullable: false),
-                    Odometer = table.Column<decimal>(type: "TEXT", nullable: false)
+                    UserId = table.Column<int>(nullable: false),
+                    Brand = table.Column<string>(nullable: false),
+                    Model = table.Column<string>(nullable: false),
+                    Plate = table.Column<string>(nullable: false),
+                    Odometer = table.Column<decimal>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -51,18 +51,18 @@ namespace gasoholic.Migrations
                 name: "Fillups",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    AutoId = table.Column<int>(type: "INTEGER", nullable: false),
-                    FilledAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Location = table.Column<string>(type: "TEXT", nullable: true),
-                    Latitude = table.Column<double>(type: "REAL", nullable: true),
-                    Longitude = table.Column<double>(type: "REAL", nullable: true),
-                    FuelType = table.Column<string>(type: "TEXT", nullable: false),
-                    PricePerGallon = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Gallons = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Odometer = table.Column<decimal>(type: "TEXT", nullable: false),
-                    IsPartialFill = table.Column<bool>(type: "INTEGER", nullable: false)
+                    AutoId = table.Column<int>(nullable: false),
+                    FilledAt = table.Column<DateTime>(nullable: false),
+                    Location = table.Column<string>(nullable: true),
+                    Latitude = table.Column<double>(nullable: true),
+                    Longitude = table.Column<double>(nullable: true),
+                    FuelType = table.Column<string>(nullable: false),
+                    PricePerGallon = table.Column<decimal>(nullable: false),
+                    Gallons = table.Column<decimal>(nullable: false),
+                    Odometer = table.Column<decimal>(nullable: false),
+                    IsPartialFill = table.Column<bool>(nullable: false)
                 },
                 constraints: table =>
                 {

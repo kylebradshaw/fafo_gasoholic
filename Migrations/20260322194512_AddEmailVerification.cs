@@ -29,13 +29,13 @@ namespace gasoholic.Migrations
                 name: "VerificationTokens",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Token = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UsedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    UserId = table.Column<int>(nullable: false),
+                    Token = table.Column<string>(nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false),
+                    ExpiresAt = table.Column<DateTime>(nullable: false),
+                    UsedAt = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {
