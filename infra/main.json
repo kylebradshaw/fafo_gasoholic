@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "8153922433522807683"
+      "templateHash": "3876370697805914253"
     }
   },
   "parameters": {
@@ -167,6 +167,11 @@
               "name": "sql-connection",
               "keyVaultUrl": "[format('{0}secrets/SqlConnection', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
               "identity": "system"
+            },
+            {
+              "name": "smoke-test-secret",
+              "keyVaultUrl": "[format('{0}secrets/SmokeTestSecret', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
+              "identity": "system"
             }
           ]
         },
@@ -195,6 +200,10 @@
                 {
                   "name": "CORS_ORIGINS",
                   "value": "[format('https://{0}.{1},https://gas.sdir.cc', parameters('appName'), reference(resourceId('Microsoft.App/managedEnvironments', variables('envName')), '2024-03-01').defaultDomain)]"
+                },
+                {
+                  "name": "SmokeTestSecret",
+                  "secretRef": "smoke-test-secret"
                 },
                 {
                   "name": "ASPNETCORE_ENVIRONMENT",
