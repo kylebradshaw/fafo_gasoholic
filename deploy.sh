@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# deploy.sh — Provision Azure infrastructure and deploy gasoholic
+# deploy.sh — Deploy gasoholic to Azure Container Apps
 #
 # Usage:
-#   ./deploy.sh              # full provision + deploy
-#   ./deploy.sh --infra-only # provision Azure resources, skip app deploy
-#   ./deploy.sh --app-only   # deploy app to existing infrastructure
+#   ./deploy.sh              # deploy app only (build → push → update container)
+#   ./deploy.sh --infra-only # provision/update Azure infrastructure only (Bicep)
+#   ./deploy.sh --with-infra # provision infrastructure AND deploy app
 #
-# Architecture:
-#   Azure Container Apps (consumption, East US) — scales to zero
-#   Azure Container Registry (Basic, ~$5/mo)
-#   Azure Files (Standard LRS, ~$0.02/GiB/mo) — SQLite database persisted here
+# Infrastructure changes (Bicep) are opt-in via --with-infra or --infra-only.
+# Running without flags is safe and fast — it only touches the container image.
 #
 # Prerequisites:
 #   brew install azure-cli
@@ -24,14 +22,16 @@ set -euo pipefail
 APP_NAME="gasoholic"
 RESOURCE_GROUP="gasoholic-rg"
 LOCATION="eastus"          # East US — all resources deployed here
+CUSTOM_DOMAIN="gas.sdir.cc"
 
 # ── Flags ─────────────────────────────────────────────────────────────────────
 INFRA_ONLY=false
-APP_ONLY=false
+WITH_INFRA=false
 for arg in "$@"; do
   case $arg in
     --infra-only) INFRA_ONLY=true ;;
-    --app-only)   APP_ONLY=true ;;
+    --with-infra) WITH_INFRA=true ;;
+    --app-only)   ;; # accepted for backwards compat, now the default
   esac
 done
 
@@ -61,7 +61,7 @@ if [[ -f "$SECRETS_FILE" ]]; then
 fi
 
 # ── Providers ─────────────────────────────────────────────────────────────────
-if [[ "$APP_ONLY" == false ]]; then
+if [[ "$WITH_INFRA" == true || "$INFRA_ONLY" == true ]]; then
   log "Registering resource providers..."
   for ns in Microsoft.App Microsoft.ContainerRegistry Microsoft.Storage; do
     state=$(az provider show --namespace "$ns" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
@@ -109,6 +109,22 @@ if [[ "$APP_ONLY" == false ]]; then
     2>/dev/null)
   echo "AZURE_CREDENTIALS='${AZURE_CREDENTIALS}'" >> "$SECRETS_FILE"
   ok "Service principal created"
+
+  # ── Re-bind custom domain after Bicep wipes it ──────────────────────────────
+  log "Re-binding custom domain $CUSTOM_DOMAIN (Bicep resets ingress)..."
+  az containerapp hostname add \
+    --name "$APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --hostname "$CUSTOM_DOMAIN" \
+    --output none 2>/dev/null || true
+  az containerapp hostname bind \
+    --name "$APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --hostname "$CUSTOM_DOMAIN" \
+    --environment "${APP_NAME}-env" \
+    --validation-method CNAME \
+    --output none 2>/dev/null || true
+  ok "Custom domain $CUSTOM_DOMAIN re-bound (cert may take 1–2 min to activate)"
 fi
 
 # ── Build & push image ────────────────────────────────────────────────────────
