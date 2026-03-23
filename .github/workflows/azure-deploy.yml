@@ -64,14 +64,14 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: tests/package-lock.json
+          cache-dependency-path: e2e/package-lock.json
 
       - name: Install Playwright
-        working-directory: tests
+        working-directory: e2e
         run: npm ci
 
       - name: Smoke test
-        working-directory: tests
+        working-directory: e2e
         env:
           BASE_URL: https://gasoholic.yellowcliff-a9ca470c.eastus.azurecontainerapps.io
           SMOKE_TEST_SECRET: ${{ secrets.SMOKE_TEST_SECRET }}
@@ -90,5 +90,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-smoke-report
-          path: tests/playwright-report/
+          path: e2e/playwright-report/
           retention-days: 7

@@ -1,16 +1,14 @@
 {
-  "name": "e2e",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "gasoholic-e2e",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:ui": "playwright test --grep-invert @smoke",
+    "report": "playwright show-report"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.0.0"
   }
 }

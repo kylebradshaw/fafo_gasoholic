@@ -1,15 +1,16 @@
-// @ts-check
-const { test, expect, request } = require('@playwright/test');
+import { test, expect, request } from '@playwright/test';
+import { devLogin, uniqueEmail } from '../helpers/auth';
 
-const BASE = 'http://localhost:5100';
+const BASE = process.env.BASE_URL ?? 'http://localhost:5100';
 const VIEWPORTS = [
-  { name: '375px mobile', width: 375, height: 812 },
-  { name: '768px tablet', width: 768, height: 1024 },
-  { name: '1280px desktop', width: 1280, height: 800 },
+  { name: '375px mobile',  width: 375,  height: 812  },
+  { name: '768px tablet',  width: 768,  height: 1024 },
+  { name: '1280px desktop',width: 1280, height: 800  },
 ];
 
-test.describe('Task 10 — Polish & RWD', () => {
-  test('no layout breakage at 375px, 768px, 1280px', async ({ page }) => {
+test.describe('Polish & responsive design', () => {
+
+  test('no layout breakage across breakpoints', async ({ page }) => {
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto('/');
@@ -18,22 +19,15 @@ test.describe('Task 10 — Polish & RWD', () => {
     }
   });
 
-  test('full happy path: login → add auto → add 3 fillups → verify MPG → edit → delete', async ({ page, context }) => {
-    const errors = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') errors.push(msg.text());
-    });
-    page.on('dialog', d => d.dismiss());
+  test('full happy path: login → add auto → 3 fillups → verify MPG → edit → delete', async ({ page, context }) => {
+    const errors: string[] = [];
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
 
-    // ── 1. Login via API (same pattern as proven task 7/8/9 tests) ──────────
     const api = await request.newContext({ baseURL: BASE });
-    const email = `e2e-${Date.now()}@test.com`;
-    await api.post('/auth/login', { data: { email } });
-    const state = await api.storageState();
+    const state = await devLogin(api, uniqueEmail('polish'));
     await api.dispose();
     await context.addCookies(state.cookies);
 
-    // ── 2. Add auto ─────────────────────────────────────────────────────────
     await page.goto('/app.html');
     await page.click('text=Autos');
     await page.click('#addAutoBtn');
@@ -47,12 +41,11 @@ test.describe('Task 10 — Polish & RWD', () => {
     ]);
     await expect(page.locator('.auto-card', { hasText: 'Honda Accord' })).toBeVisible();
 
-    // Switch to Log tab and select auto
     await page.click('.tab-btn[data-tab="log"]');
     const autoValue = await page.locator('#autoSelector option', { hasText: 'Honda Accord' }).getAttribute('value');
-    await page.locator('#autoSelector').selectOption(autoValue);
+    await page.locator('#autoSelector').selectOption(autoValue!);
 
-    // ── 3. Add first full fill ───────────────────────────────────────────────
+    // First full fill
     await page.click('#addFillupBtn');
     await page.fill('#fillupDate', '2026-01-10');
     await page.fill('#fillupTime', '08:00');
@@ -65,7 +58,7 @@ test.describe('Task 10 — Polish & RWD', () => {
     ]);
     await expect(page.locator('tbody tr')).toHaveCount(1);
 
-    // ── 4. Add second full fill ──────────────────────────────────────────────
+    // Second full fill
     await page.click('#addFillupBtn');
     await page.fill('#fillupDate', '2026-01-20');
     await page.fill('#fillupTime', '09:00');
@@ -78,7 +71,7 @@ test.describe('Task 10 — Polish & RWD', () => {
     ]);
     await expect(page.locator('tbody tr')).toHaveCount(2);
 
-    // ── 5. Add partial fill ──────────────────────────────────────────────────
+    // Partial fill
     await page.click('#addFillupBtn');
     await page.fill('#fillupDate', '2026-01-25');
     await page.fill('#fillupTime', '10:00');
@@ -92,49 +85,37 @@ test.describe('Task 10 — Polish & RWD', () => {
     ]);
     await expect(page.locator('tbody tr')).toHaveCount(3);
 
-    // ── 6. Verify MPG ────────────────────────────────────────────────────────
-    // Rows newest first: partial (row 0), second full (row 1), first full (row 2)
+    // Verify MPG — rows newest first: partial, second full, first full
     const rows = page.locator('tbody tr');
-    // Partial should show —
     await expect(rows.nth(0).locator('td').nth(6)).toHaveText('—');
-    // Second full fill: 360 miles / 12 gallons = 30 MPG
     const mpgText = await rows.nth(1).locator('td').nth(6).textContent();
-    expect(parseFloat(mpgText)).toBeCloseTo(30, 0);
-    // First full fill: no prior — shows —
+    expect(parseFloat(mpgText!)).toBeCloseTo(30, 0);
     await expect(rows.nth(2).locator('td').nth(6)).toHaveText('—');
 
-    // ── 7. Edit second fillup (increase gallons) ─────────────────────────────
+    // Edit second fillup
     await rows.nth(1).getByRole('button', { name: 'Edit' }).click();
     await page.fill('#fillupGallons', '14.4');
     await Promise.all([
       page.waitForResponse(r => r.url().includes('/fillups/') && r.request().method() === 'PUT'),
       page.click('#fillupForm button[type="submit"]'),
     ]);
-    // MPG should update: 360 / 14.4 = 25
     const updatedMpg = await page.locator('tbody tr').nth(1).locator('td').nth(6).textContent();
-    expect(parseFloat(updatedMpg)).toBeCloseTo(25, 0);
+    expect(parseFloat(updatedMpg!)).toBeCloseTo(25, 0);
 
-    // ── 8. Delete partial fill ────────────────────────────────────────────────
+    // Delete partial fill
     await page.locator('tbody tr').first().getByRole('button', { name: 'Del' }).click();
     await expect(page.locator('tbody tr')).toHaveCount(2);
 
-    // ── 9. No console errors ─────────────────────────────────────────────────
-    // Filter out known benign messages (geolocation errors in test env)
     const realErrors = errors.filter(e => !e.includes('geolocation') && !e.includes('Nominatim'));
     expect(realErrors, `Console errors: ${realErrors.join(', ')}`).toHaveLength(0);
   });
 
-  test('API errors surface as visible toast, not alerts', async ({ page }) => {
-    // Go to app.html without auth — auth guard fires but we intercept after load
-    // Instead, login then force a fetch failure by going offline
+  test('API errors surface as toast, not alerts', async ({ page }) => {
     await page.route('**/api/autos', route => route.fulfill({ status: 500, body: 'error' }));
+    let dialogShown = false;
+    page.on('dialog', () => { dialogShown = true; });
     await page.goto('/app.html');
-    // After a moment, toast or error state should appear
-    // The loadAutos call will fail (500), triggering showToast
     await page.waitForTimeout(500);
-    // Either toast is shown or empty state — no alert dialog
-    // (if an alert appeared, the page would be blocked; our check is implicit)
-    const dialogTriggered = false; // We'd catch it with page.on('dialog')
-    expect(dialogTriggered).toBe(false);
+    expect(dialogShown).toBe(false);
   });
 });
