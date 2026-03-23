@@ -31,14 +31,15 @@ resource acsEmail 'Microsoft.Communication/emailServices@2023-04-01' = {
   }
 }
 
-// Azure-managed domain — no DNS config required; Azure provides the sender address.
-// Sender: DoNotReply@<generated-domain>.azurecomm.net
+// Custom domain — requires DNS records (SPF, DKIM, DKIM2) added manually after deploy.
+// See DEPLOYMENT.md "Email Domain Setup (Task 18)" for DNS setup steps.
+// Sender: verify@gas.sdir.cc
 resource acsDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
   parent: acsEmail
-  name: 'AzureManagedDomain'
+  name: 'gas.sdir.cc'
   location: 'global'
   properties: {
-    domainManagement: 'AzureManaged'
+    domainManagement: 'CustomerManaged'
   }
 }
 

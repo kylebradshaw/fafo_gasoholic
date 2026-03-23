@@ -44,3 +44,20 @@ This file is appended with every user interaction in each Claude Code session.
   - `wwwroot/index.html`: login form renders immediately; `/auth/me` check runs non-blocking in background
   - `wwwroot/app.html`: app shell + shimmer skeleton loading states render instantly; auth check and `/api/autos` fire in parallel via `Promise.all` (was sequential waterfall)
 - User requested FAFO.md logging after every plan task completion; added instruction to CLAUDE.md
+
+## Session: 2026-03-23
+
+- User reported magic link emails landing in spam. Root cause: ACS Azure-managed domain (`DoNotReply@<generated>.azurecomm.net`) has low trust with email providers.
+- Interview: user owns `sdir.cc`, has DNS access, 1-10 emails/day, wants to stay on ACS free tier, mixed provider targets (Gmail/Outlook), wants sender on host domain.
+- Decision: ACS custom domain (`gas.sdir.cc`) with SPF/DKIM/DMARC — minimal code change, stays in Azure. Resend is the fallback if deliverability remains poor.
+- **Task 18 drafted in `PLAN.md`:** ACS Custom Domain for Email Deliverability — Bicep changes (CustomerManaged domain), sender address update (`verify@gas.sdir.cc`), `/health` email config reporting, smoke test email verification steps, test-email endpoint.
+- **DEPLOYMENT.md updated:** Added full "Email Domain Setup (Task 18)" section with 6 manual steps (deploy infra → get DNS records from portal → add DNS records + DMARC → verify in portal → deploy app → verify delivery), plus troubleshooting guide.
+- **Task 18 implemented** (`feat: task 18`):
+  - `infra/main.bicep`: changed `acsDomain` from `AzureManaged`/`AzureManagedDomain` to `CustomerManaged`/`gas.sdir.cc`
+  - `Services/VerificationEmailSender.cs`: sender prefix changed from `DoNotReply@` to `verify@`; added `IsConfigured`, `SenderDomain`, `SenderAddress` properties; added `SendTestEmailAsync()` method
+  - `Services/IVerificationEmailSender.cs`: interface extended with email config properties and test-email method
+  - `Program.cs`: `/health` endpoint now returns `email.configured`, `email.senderDomain`, `email.senderAddress`
+  - `Endpoints/SmokeTestEndpoints.cs`: added `POST /auth/test-email` endpoint (gated by `SMOKE_TEST_SECRET`) that sends a real test email via ACS
+  - `smoke-test.sh`: added step 1b (email config check via /health) and step 3b (test email send via /auth/test-email)
+  - Build passes, Playwright e2e tests pass (18/21 — same 3 pre-existing failures as before)
+  - Remaining manual checks: ACS domain verification in Azure Portal, inbox delivery test on Gmail/Outlook

@@ -5,6 +5,7 @@ public class VerificationEmailSender : IVerificationEmailSender
 {
     private readonly EmailClient? _client;
     private readonly string? _fromAddress;
+    private readonly string? _senderDomain;
     private readonly ILogger<VerificationEmailSender> _logger;
 
     public VerificationEmailSender(IConfiguration config, ILogger<VerificationEmailSender> logger)
@@ -14,11 +15,15 @@ public class VerificationEmailSender : IVerificationEmailSender
         if (!string.IsNullOrEmpty(connStr))
         {
             _client = new EmailClient(connStr);
-            // ACS managed domain sender address — format: DoNotReply@<domain>
-            var domain = config["AcsSenderDomain"] ?? "azurecomm.net";
-            _fromAddress = $"DoNotReply@{domain}";
+            // Custom domain sender address — format: verify@<domain>
+            _senderDomain = config["AcsSenderDomain"] ?? "azurecomm.net";
+            _fromAddress = $"verify@{_senderDomain}";
         }
     }
+
+    public bool IsConfigured => _client is not null;
+    public string? SenderDomain => _senderDomain;
+    public string? SenderAddress => _fromAddress;
 
     public async Task SendMagicLinkAsync(string toEmail, string token, string baseUrl)
     {
@@ -47,5 +52,27 @@ public class VerificationEmailSender : IVerificationEmailSender
         );
 
         await _client.SendAsync(WaitUntil.Completed, message);
+    }
+
+    public async Task<string?> SendTestEmailAsync(string toEmail)
+    {
+        if (_client is null || _fromAddress is null)
+        {
+            _logger.LogWarning("ACS not configured — test email to {Email} skipped", toEmail);
+            return null;
+        }
+
+        var message = new EmailMessage(
+            senderAddress: _fromAddress,
+            recipients: new EmailRecipients([new(toEmail)]),
+            content: new EmailContent("Gasoholic Test Email")
+            {
+                PlainText = "This is a test email from Gasoholic to verify ACS custom domain configuration.",
+                Html = "<p>This is a test email from Gasoholic to verify ACS custom domain configuration.</p>"
+            }
+        );
+
+        var result = await _client.SendAsync(WaitUntil.Completed, message);
+        return result.Id;
     }
 }

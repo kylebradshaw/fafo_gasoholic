@@ -65,6 +65,25 @@ STATUS=$(req_status GET /health)
 BODY=$(cat /tmp/smoke_body)
 assert_status "GET /health" "200" "$STATUS" "$BODY"
 
+# ── Step 1b: Email config check via /health ────────────────────────────────
+
+echo "[1b] Email config check"
+if echo "$BODY" | grep -q '"configured":true'; then
+  ok "Email configured"
+else
+  fail "Email configured" "email.configured is not true in: $BODY"
+fi
+if echo "$BODY" | grep -q '"senderDomain":"gas.sdir.cc"'; then
+  ok "Sender domain = gas.sdir.cc"
+else
+  fail "Sender domain" "email.senderDomain is not gas.sdir.cc in: $BODY"
+fi
+if echo "$BODY" | grep -q '"senderAddress":"verify@gas.sdir.cc"'; then
+  ok "Sender address = verify@gas.sdir.cc"
+else
+  fail "Sender address" "email.senderAddress is not verify@gas.sdir.cc in: $BODY"
+fi
+
 # ── Step 2: /auth/me without session → 401 ─────────────────────────────────
 
 echo "[2] /auth/me (unauthenticated)"
@@ -82,6 +101,24 @@ else
     -d "{\"email\":\"$TEST_EMAIL\"}")
   BODY=$(cat /tmp/smoke_body)
   assert_status "POST /auth/dev-login" "200" "$STATUS" "$BODY"
+fi
+
+# ── Step 3b: Test email via ACS ─────────────────────────────────────────────
+
+echo "[3b] Test email send"
+if [ -n "$SMOKE_SECRET" ]; then
+  STATUS=$(req_status POST /auth/test-email \
+    -H "X-Smoke-Test-Secret: $SMOKE_SECRET" \
+    -d "{\"email\":\"$TEST_EMAIL\"}")
+  BODY=$(cat /tmp/smoke_body)
+  assert_status "POST /auth/test-email" "200" "$STATUS" "$BODY"
+  if echo "$BODY" | grep -q '"status":"sent"'; then
+    ok "ACS accepted test email"
+  elif echo "$BODY" | grep -q '"status":"skipped"'; then
+    ok "ACS not configured (dev mode) — test email skipped"
+  else
+    fail "ACS test email" "unexpected response: $BODY"
+  fi
 fi
 
 # ── Step 4: /auth/me with session → 200 ────────────────────────────────────

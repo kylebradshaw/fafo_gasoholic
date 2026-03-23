@@ -71,7 +71,16 @@ app.UseSession();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/health", (IVerificationEmailSender emailSender) => Results.Ok(new
+{
+    status = "ok",
+    email = new
+    {
+        configured = emailSender.IsConfigured,
+        senderDomain = emailSender.SenderDomain,
+        senderAddress = emailSender.SenderAddress
+    }
+}));
 
 app.MapAuthEndpoints();
 app.MapAutoEndpoints();

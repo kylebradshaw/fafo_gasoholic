@@ -661,6 +661,77 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 18 — ACS Custom Domain for Email Deliverability
+
+**Goal:** Replace the Azure-managed sending domain (`DoNotReply@<generated>.azurecomm.net`) with a custom domain (`gas.sdir.cc`) so magic link emails stop landing in spam. Add deployment verification tests to catch email config regressions.
+
+**Root cause:** Azure-managed ACS domains are shared across all ACS tenants. Email providers (Gmail, Outlook, etc.) assign low trust scores to these shared domains, causing emails to land in spam. A custom domain with proper SPF/DKIM/DMARC records establishes sender reputation tied to `sdir.cc`.
+
+**Key decisions:**
+| Concern | Choice |
+|---|---|
+| Sending domain | `gas.sdir.cc` (subdomain isolates email reputation) |
+| Sender address | `verify@gas.sdir.cc` |
+| Email service | Stay on ACS free tier (2,000/mo is plenty for 1-10 emails/day) |
+| DNS provider | User-managed (`sdir.cc` — user has full DNS access) |
+| Fallback plan | If deliverability still poor after custom domain, migrate to Resend |
+
+---
+
+**Work:**
+
+1. **Bicep — replace Azure-managed domain with custom domain (`infra/main.bicep`)**
+   - Change `acsDomain` resource from `domainManagement: 'AzureManaged'` to `domainManagement: 'CustomerManaged'`
+   - Set domain `name` to `gas.sdir.cc` instead of `AzureManagedDomain`
+   - ACS will generate the required DNS records (SPF, DKIM, DKIM2) after deployment — these must be added manually (see DEPLOYMENT.md)
+   - Update `acsDomainSecret` to output the custom domain name
+
+2. **Update sender address (`Services/VerificationEmailSender.cs`)**
+   - Change from address from `DoNotReply@{domain}` to `verify@{domain}`
+   - The `AcsSenderDomain` env var will now resolve to `gas.sdir.cc` instead of the Azure-managed domain
+
+3. **DMARC DNS record (manual — documented in DEPLOYMENT.md)**
+   - Add `_dmarc.gas.sdir.cc` TXT record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@sdir.cc`
+   - DMARC is not managed by ACS but is required for good deliverability
+
+4. **Email health check — extend `/health` endpoint**
+   - Add an `email` section to the health response: `{ "status": "ok", "email": { "configured": true, "senderDomain": "gas.sdir.cc", "senderAddress": "verify@gas.sdir.cc" } }`
+   - When ACS is not configured (dev mode): `{ "email": { "configured": false } }`
+
+5. **Smoke test — email config verification (`smoke-test.sh`)**
+   - Add step after health check: `GET /health` → assert `email.configured == true` and `email.senderDomain == "gas.sdir.cc"`
+   - This catches regressions where the domain reverts to Azure-managed or ACS becomes unconfigured
+
+6. **Smoke test — email send verification (`smoke-test.sh`)**
+   - Add a new protected endpoint: `POST /auth/test-email` (gated by `SMOKE_TEST_SECRET`, like dev-login)
+   - Sends a test email to a configurable address via ACS and returns the ACS message ID + status
+   - Smoke test calls this endpoint and asserts ACS accepted the message (HTTP 200 + `"status": "sent"`)
+   - This verifies the full ACS → custom domain → send pipeline works, without needing to check an inbox
+
+7. **Playwright e2e regression — login flow still works**
+   - Existing `login.spec.ts` should continue to pass (dev mode bypasses email)
+   - No new Playwright tests needed — email delivery is verified by smoke test
+
+---
+
+**Acceptance criteria:**
+- [x] `infra/main.bicep` declares a `CustomerManaged` domain for `gas.sdir.cc` (not `AzureManaged`)
+- [x] DNS records (SPF, DKIM, DKIM2, DMARC) are documented in `DEPLOYMENT.md` with exact values from ACS
+- [x] `VerificationEmailSender.cs` sends from `verify@gas.sdir.cc`
+- [x] `/health` endpoint returns `email.configured`, `email.senderDomain`, and `email.senderAddress`
+- [x] `smoke-test.sh` verifies email config via `/health` response
+- [x] `POST /auth/test-email` endpoint exists (gated by `SMOKE_TEST_SECRET`) and sends a real test email via ACS
+- [x] `smoke-test.sh` calls `/auth/test-email` and asserts ACS accepted the message
+- [ ] ACS domain verification status is `Verified` in Azure Portal (manual check after DNS setup)
+- [ ] Test email sent from `verify@gas.sdir.cc` lands in inbox (not spam) on Gmail and Outlook (manual check)
+- [x] Existing Playwright e2e tests pass (no regressions)
+- [x] `dotnet build` passes
+- [ ] git commit created: `feat: task 18 — ACS custom domain for email deliverability`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**
