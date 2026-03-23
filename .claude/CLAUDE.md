@@ -8,3 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full spec and Task execution plan: `.claude/PLAN.md`
 Session interaction log: `.claude/FAFO.md`
+
+## Workflow Rules
+
+- **After completing any plan task:** append a summary of the changes to `.claude/FAFO.md` under the current session date heading. Include the task number, what was changed (files + key details), and why.

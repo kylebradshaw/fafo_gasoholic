@@ -22,7 +22,9 @@
       "Bash(az provider:*)",
       "Bash(until az:*)",
       "Bash(az deployment:*)",
-      "Bash(az sql:*)"
+      "Bash(az sql:*)",
+      "Bash(kill %1)",
+      "Bash(wait)"
     ]
   },
   "sandbox": {

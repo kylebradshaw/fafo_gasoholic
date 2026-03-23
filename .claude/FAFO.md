@@ -29,3 +29,18 @@ This file is appended with every user interaction in each Claude Code session.
 - User asked what command to type to execute `PLAN.md` — provided `/loop` invocation
 - User asked what the `10m` interval means — clarified it's the delay between iterations; recommended `1m` for this sequential task workflow
 - User ran `/loop 1m` to execute `PLAN.md` tasks sequentially — cron job `f34aa792` scheduled at `*/1 * * * *`, auto-expires after 3 days
+
+---
+
+## Session: 2026-03-23
+
+- User reported dissatisfaction with first render speed and having to log in every time on the deployed app at `gas.sdir.cc`
+- Interview: user uses the app at the gas pump on iOS Safari — needs it fast; also sees login loss on Edge desktop
+- Interview: cold start is the main render issue; user approved `minReplicas: 1` (~$15/mo) to keep container warm
+- Task 17 drafted in `PLAN.md`: **Speed Up User Experience** — three fixes: warm replica, session persistence, faster frontend render
+- **Task 17 completed** (`feat: task 17`):
+  - `infra/main.bicep`: `minReplicas: 0` → `1` — eliminates 5-10s cold start
+  - `Program.cs`: added `DefaultSlidingExpiration = 30 days` on SQL Server distributed session cache (was defaulting to 20 min, causing premature session eviction despite 30-day cookie); added explicit `SameSite = Lax`
+  - `wwwroot/index.html`: login form renders immediately; `/auth/me` check runs non-blocking in background
+  - `wwwroot/app.html`: app shell + shimmer skeleton loading states render instantly; auth check and `/api/autos` fire in parallel via `Promise.all` (was sequential waterfall)
+- User requested FAFO.md logging after every plan task completion; added instruction to CLAUDE.md

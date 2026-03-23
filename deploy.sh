@@ -183,7 +183,7 @@ echo "════════════════════════�
 echo "  Deployment complete"
 echo "  App URL:    ${APP_URL:-run ./deploy.sh --infra-only first}"
 echo "═══════════════════════════════════════════════════════"
-if [[ "${AZURE_CREDENTIALS:-}" != "" ]] && [[ "$APP_ONLY" == false ]]; then
+if [[ "${AZURE_CREDENTIALS:-}" != "" ]] && [[ "$INFRA_ONLY" == false ]]; then
   echo ""
   echo "  GitHub Actions secret to add:"
   echo "  Name:  AZURE_CREDENTIALS"
