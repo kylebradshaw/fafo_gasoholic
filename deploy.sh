@@ -133,6 +133,28 @@ if [[ "$INFRA_ONLY" == false ]]; then
     --output none
 
   ok "App deployed → $APP_URL"
+
+  # ── Run EF migrations against Azure SQL ─────────────────────────────────────
+  log "Running database migrations..."
+  SQL_CONN=$(az keyvault secret show \
+    --vault-name "${APP_NAME}-kv" \
+    --name SqlConnection \
+    --query value -o tsv 2>/dev/null || echo "")
+
+  if [[ -z "$SQL_CONN" ]]; then
+    echo "  ⚠  SqlConnection secret not found in Key Vault — skipping migrations"
+  else
+    DATABASE_PROVIDER=sqlserver dotnet ef database update \
+      --project "$(dirname "$0")" \
+      --connection "$SQL_CONN"
+
+    # Create SessionCache table if it doesn't exist yet
+    dotnet-sql-cache create "$SQL_CONN" dbo SessionCache 2>/dev/null && \
+      ok "SessionCache table ready" || \
+      ok "SessionCache table already exists"
+
+    ok "Migrations applied"
+  fi
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

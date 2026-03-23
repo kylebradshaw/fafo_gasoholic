@@ -5,7 +5,8 @@ param appName string
 param location string = resourceGroup().location
 
 // Derived names
-var acrName = '${replace(appName, '-', '')}acr'   // ACR: alphanumeric only
+var acrBase = toLower(replace(appName, '-', ''))
+var acrName = '${take('${acrBase}gas', 47)}acr'   // ACR: alphanumeric only, always 5-50 chars
 var kvName = '${appName}-kv'
 var envName = '${appName}-env'
 
@@ -83,6 +84,9 @@ resource acsDomainSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
+// SQL Server connection string — pre-created manually in KV; referenced here by URL.
+// To create/update: az keyvault secret set --vault-name gasoholic-kv --name SqlConnection --value "<connstr>"
+
 // ── Container Apps Environment (free — consumption plan) ─────────────────────
 
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -126,6 +130,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/AcsSenderDomain'
           identity: 'system'
         }
+        {
+          name: 'sql-connection'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SqlConnection'
+          identity: 'system'
+        }
       ]
     }
     template: {
@@ -134,11 +143,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: appName
           image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           env: [
-            { name: 'DATABASE_PROVIDER',                       value: 'sqlite' }
-            { name: 'ConnectionStrings__DefaultConnection',    value: 'Data Source=/tmp/gasoholic.db' }
+            { name: 'DATABASE_PROVIDER',                       value: 'sqlserver' }
+            { name: 'ConnectionStrings__SqlServer',            secretRef: 'sql-connection' }
             { name: 'ConnectionStrings__ACS',                  secretRef: 'acs-connection' }
             { name: 'AcsSenderDomain',                         secretRef: 'acs-sender-domain' }
-            { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain}' }
+            { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain},https://gas.sdir.cc' }
             { name: 'ASPNETCORE_ENVIRONMENT',                  value: 'Production' }
             { name: 'ASPNETCORE_URLS',                         value: 'http://+:8080' }
           ]
