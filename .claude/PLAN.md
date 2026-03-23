@@ -732,6 +732,59 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 19 — User Sign-In & Activity Tracking
+
+**Goal:** Add visibility into when users last authenticated and when they were last active. Two new nullable `DateTime` columns on the `Users` table, database-only (no UI changes).
+
+**Key decisions:**
+| Concern | Choice |
+|---|---|
+| `LastSignIn` trigger | Magic link verification (`/auth/verify`) and dev-login only |
+| `LastInteraction` trigger | Once per session start — first `/auth/me` call with valid cookie |
+| Throttle strategy | Session-scoped flag (`interactionLogged`) — writes once per session, resets on logout/expiry |
+| UI visibility | Database-only for now — queryable via SQL or future admin API |
+| Testing | Migration + build verification only — no smoke test changes |
+
+---
+
+**Work:**
+
+1. **Data model (`Models/User.cs`)**
+   - Add `DateTime? LastSignIn` property
+   - Add `DateTime? LastInteraction` property
+   - No `AppDbContext` changes needed — nullable DateTime requires no special config
+
+2. **EF migration**
+   - `dotnet ef migrations add AddSignInTracking`
+   - Adds two nullable `datetime2` columns to `Users` table
+
+3. **Update `/auth/verify` (`Endpoints/AuthEndpoints.cs` ~line 69)**
+   - After marking `EmailVerified = true`, set `vt.User.LastSignIn = DateTime.UtcNow`
+
+4. **Update `/auth/dev-login` (`Endpoints/SmokeTestEndpoints.cs` ~line 64)**
+   - Set `user.LastSignIn = DateTime.UtcNow` on both new-user creation and existing-user paths
+
+5. **Update `/auth/me` for LastInteraction (`Endpoints/AuthEndpoints.cs` ~line 121)**
+   - After confirming user is valid and verified, check a session flag `interactionLogged`
+   - If flag is absent: set `user.LastInteraction = DateTime.UtcNow`, save, set flag in session
+   - Flag lives in session — resets naturally on logout or session expiry
+   - This ensures exactly one DB write per session resume, not per page load
+
+---
+
+**Acceptance criteria:**
+- [x] `Models/User.cs` has `DateTime? LastSignIn` and `DateTime? LastInteraction` properties
+- [x] EF migration `AddSignInTracking` exists and adds two nullable columns to `Users`
+- [x] `/auth/verify` sets `LastSignIn` on successful magic link verification
+- [x] `/auth/dev-login` sets `LastSignIn` on successful dev login
+- [x] `/auth/me` sets `LastInteraction` once per session (uses session flag to avoid repeated writes)
+- [x] `dotnet build` passes
+- [ ] git commit created: `feat: task 19 — user sign-in and activity tracking`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**
@@ -740,7 +793,6 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 ```
 
 - Each iteration: find the first task with unchecked `[ ]` criteria → implement → check off each criterion → write/run Playwright test → **git commit** → loop again
-- Only Task 10's completion emits `<promise>TESTS COMPLETE</promise>` to end the loop
+- ALL task completion _should_ emits `<promise>TESTS COMPLETE</promise>` to end the loop (10 and above)
 - Commit message format: `feat: task N — <short description>`
-- Tasks 1–4 are already complete; the loop will skip them automatically (all `[x]`)
-- MPG logic in Task 5 is the most complex — get it right before the UI builds on top
+- Some tasks are already complete; the loop will skip them automatically (all `[x]`)

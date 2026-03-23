@@ -61,13 +61,14 @@ public static class SmokeTestEndpoints
 
             if (user is null)
             {
-                user = new User { Email = email, EmailVerified = true, CreatedAt = DateTime.UtcNow };
+                user = new User { Email = email, EmailVerified = true, CreatedAt = DateTime.UtcNow, LastSignIn = DateTime.UtcNow };
                 db.Users.Add(user);
                 await db.SaveChangesAsync();
             }
             else
             {
                 user.EmailVerified = true;
+                user.LastSignIn = DateTime.UtcNow;
                 await db.SaveChangesAsync();
             }
 

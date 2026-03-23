@@ -68,6 +68,7 @@ public static class AuthEndpoints
 
             vt.UsedAt = DateTime.UtcNow;
             vt.User.EmailVerified = true;
+            vt.User.LastSignIn = DateTime.UtcNow;
             await db.SaveChangesAsync();
 
             ctx.Session.SetInt32(UserIdKey, vt.User.Id);
@@ -126,6 +127,13 @@ public static class AuthEndpoints
             var user = await db.Users.FindAsync(userId.Value);
             if (user is null) return Results.Unauthorized();
             if (!user.EmailVerified) return Results.Json(new { error = "unverified" }, statusCode: 403);
+
+            if (ctx.Session.GetInt32("interactionLogged") is null)
+            {
+                user.LastInteraction = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+                ctx.Session.SetInt32("interactionLogged", 1);
+            }
 
             return Results.Ok(new { email = user.Email });
         });

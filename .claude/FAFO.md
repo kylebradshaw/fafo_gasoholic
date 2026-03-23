@@ -61,3 +61,9 @@ This file is appended with every user interaction in each Claude Code session.
   - `smoke-test.sh`: added step 1b (email config check via /health) and step 3b (test email send via /auth/test-email)
   - Build passes, Playwright e2e tests pass (18/21 — same 3 pre-existing failures as before)
   - Remaining manual checks: ACS domain verification in Azure Portal, inbox delivery test on Gmail/Outlook
+- **Task 18 continued:** Two-phase deploy fix for ACS custom domain (can't link unverified domain). Added `useCustomEmailDomain` Bicep param, `--custom-email-domain` deploy.sh flag, kept Azure-managed domain as fallback during verification. Fixed email URL to use `https://gas.sdir.cc` via `UseForwardedHeaders` middleware. Added `verify` sender username via `az communication email domain sender-username create`.
+- **Task 19 implemented** (`feat: task 19`):
+  - `Models/User.cs`: added `DateTime? LastSignIn` and `DateTime? LastInteraction` properties
+  - `Endpoints/AuthEndpoints.cs`: `/auth/verify` sets `LastSignIn`; `/auth/me` sets `LastInteraction` once per session via `interactionLogged` session flag
+  - `Endpoints/SmokeTestEndpoints.cs`: `/auth/dev-login` sets `LastSignIn` on both new and existing user paths
+  - Migration `AddSignInTracking` adds two nullable columns to `Users` table
