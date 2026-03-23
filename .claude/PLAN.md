@@ -779,7 +779,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - [x] `/auth/dev-login` sets `LastSignIn` on successful dev login
 - [x] `/auth/me` sets `LastInteraction` once per session (uses session flag to avoid repeated writes)
 - [x] `dotnet build` passes
-- [ ] git commit created: `feat: task 19 — user sign-in and activity tracking`
+- [x] git commit created: `feat: task 19 — user sign-in and activity tracking`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 

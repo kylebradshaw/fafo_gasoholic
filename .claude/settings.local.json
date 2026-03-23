@@ -29,7 +29,8 @@
       "Bash(dig gas.sdir.cc ANY +short)",
       "Bash(dig gas.sdir.cc CNAME +short)",
       "Bash(dig gas.sdir.cc TXT +short)",
-      "Bash(dig gas.sdir.cc A +short)"
+      "Bash(dig gas.sdir.cc A +short)",
+      "Bash(dotnet ef:*)"
     ]
   },
   "sandbox": {

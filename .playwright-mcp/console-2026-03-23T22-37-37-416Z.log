@@ -1,0 +1,9 @@
+[     276ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://gas.sdir.cc/auth/me:0
+[   12548ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://gas.sdir.cc/auth/dev-login:0
+[   19881ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/me:0
+[   20395ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/me:0
+[   32450ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/me:0
+[   32739ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/login:0
+[   39409ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/me:0
+[   39791ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/login:0
+[   40112ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://gas.sdir.cc/auth/me:0

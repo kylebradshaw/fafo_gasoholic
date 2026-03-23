@@ -1,0 +1,3 @@
+[     358ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ chrome-error://chromewebdata/:0
+[    4172ms] [ERROR] Access to fetch at 'https://gas.sdir.cc/diag' from origin 'null' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ chrome-error://chromewebdata/:0
+[    4173ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://gas.sdir.cc/diag:0
