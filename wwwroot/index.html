@@ -262,6 +262,10 @@
     });
 
     document.getElementById('backLink').addEventListener('click', showLogin);
+
+    document.getElementById('email').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('loginForm').requestSubmit();
+    });
   </script>
 </body>
 </html>
