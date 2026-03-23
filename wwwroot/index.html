@@ -169,13 +169,10 @@
   </div>
 
   <script>
-    // If already logged in, skip to app
-    (async () => {
-      try {
-        const res = await fetch('/auth/me', { credentials: 'same-origin' });
-        if (res.ok) window.location.replace('/app.html');
-      } catch (_) {}
-    })();
+    // If already logged in, skip to app (non-blocking — form renders immediately)
+    fetch('/auth/me', { credentials: 'same-origin' })
+      .then(res => { if (res.ok) window.location.replace('/app.html'); })
+      .catch(() => {});
 
     let pendingEmail = '';
 

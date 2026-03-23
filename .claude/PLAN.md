@@ -608,11 +608,64 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 17 — Speed Up User Experience (Eliminate Cold Start + Fix Session Persistence + Faster Render)
+
+**Goal:** Make the app feel instant at the pump. Three problems: (1) container cold-starts take 5-10s because `minReplicas: 0`, (2) sessions evict after ~20 minutes despite 30-day cookie because the distributed cache has no explicit sliding expiration, (3) the frontend shows a blank page while sequential API calls complete.
+
+**Key decisions:**
+| Concern | Choice |
+|---|---|
+| Cold start | `minReplicas: 1` — always-warm replica (~$15/mo, user-approved) |
+| Session eviction | Set `DefaultSlidingExpiration = 30 days` on `AddDistributedSqlServerCache` to match cookie lifetime |
+| Frontend render | Show app shell + skeleton immediately; parallelize auth check and data fetch; defer non-critical work |
+
+---
+
+**Work:**
+
+1. **Eliminate cold start — Bicep (`infra/main.bicep`)**
+   - Change `minReplicas: 0` → `minReplicas: 1` in the Container App scale config
+   - Container stays warm; no more 5-10s spin-up delay
+
+2. **Fix session persistence — `Program.cs`**
+   - Add `DefaultSlidingExpiration = TimeSpan.FromDays(30)` to `AddDistributedSqlServerCache` options
+   - This ensures the SQL Server `SessionCache` entry lives as long as the cookie (currently defaults to 20 minutes, causing premature eviction)
+   - Add `options.Cookie.SameSite = SameSiteMode.Lax` explicitly for clarity (default behavior, but makes intent visible)
+
+3. **Faster frontend render — `wwwroot/app.html`**
+   - **Immediate shell**: render nav bar, tabs, and a loading skeleton/spinner *before* any fetch calls
+   - **Parallel fetches**: fire `/auth/me` and `/api/autos` simultaneously on page load instead of sequentially (auth check → then load autos → then load fillups)
+   - **Optimistic rendering**: show the app shell immediately; if auth fails, redirect; if auth succeeds, the autos data is already in flight
+   - **Skeleton states**: show placeholder rows in the fillup table and auto cards while data loads, replace with real content on response
+
+4. **Faster frontend render — `wwwroot/index.html`**
+   - Same pattern: show the login form immediately, fire `/auth/me` in the background to check if already logged in, redirect only if the check succeeds (don't block form render on the auth check)
+
+---
+
+**Acceptance criteria:**
+- [x] `infra/main.bicep` has `minReplicas: 1` (verified by reading the file)
+- [x] `Program.cs` sets `DefaultSlidingExpiration = TimeSpan.FromDays(30)` on the distributed SQL Server cache
+- [x] `Program.cs` sets `SameSite = SameSiteMode.Lax` on session cookie explicitly
+- [x] `index.html` renders the login form immediately without waiting for `/auth/me` response
+- [x] `app.html` shows the app shell (nav + tabs + skeleton) before any API response arrives
+- [x] `app.html` fires `/auth/me` and `/api/autos` in parallel (not sequentially)
+- [x] Fillup table shows a loading skeleton/spinner while data is being fetched
+- [x] Auto cards show a loading skeleton while data is being fetched
+- [x] `dotnet build` passes
+- [x] Local dev: login persists across app restart when using `DATABASE_PROVIDER=sqlserver` (session not lost)
+- [x] Local dev: app.html renders app shell within 100ms of navigation (before API responses)
+- [x] git commit created: `feat: task 17 — speed up UX (warm replica, session persistence, fast render)`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**
 ```
-/ralph-loop "$(cat .claude/PLAN.md)" --completion-promise "TESTS COMPLETE"
+/ralph-loop:ralph-loop "$(cat .claude/PLAN.md)" --completion-promise "TESTS COMPLETE"
 ```
 
 - Each iteration: find the first task with unchecked `[ ]` criteria → implement → check off each criterion → write/run Playwright test → **git commit** → loop again

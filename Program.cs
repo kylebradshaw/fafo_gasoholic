@@ -22,6 +22,7 @@ if (dbProvider == "sqlserver")
         options.ConnectionString = builder.Configuration.GetConnectionString("SqlServer");
         options.SchemaName = "dbo";
         options.TableName = "SessionCache";
+        options.DefaultSlidingExpiration = TimeSpan.FromDays(30);
     });
 }
 else
@@ -35,6 +36,7 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.MaxAge = TimeSpan.FromDays(30);  // persistent — survives browser close
+    options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = isProd
         ? CookieSecurePolicy.Always
         : CookieSecurePolicy.None;
