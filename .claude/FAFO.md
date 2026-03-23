@@ -67,3 +67,16 @@ This file is appended with every user interaction in each Claude Code session.
   - `Endpoints/AuthEndpoints.cs`: `/auth/verify` sets `LastSignIn`; `/auth/me` sets `LastInteraction` once per session via `interactionLogged` session flag
   - `Endpoints/SmokeTestEndpoints.cs`: `/auth/dev-login` sets `LastSignIn` on both new and existing user paths
   - Migration `AddSignInTracking` adds two nullable columns to `Users` table
+
+## Session: 2026-03-23
+
+- **Bug fix: login immediately logs out on production (gas.sdir.cc)**
+  - Root cause: `ForwardedHeaders` middleware (added in task 19) only trusts proxies on localhost by default. Azure Container Apps reverse proxy IP isn't localhost, so `X-Forwarded-Proto: https` was silently ignored. The app thought all requests were HTTP, and since `Cookie.SecurePolicy = Always` in production, session cookies were never sent back by the browser.
+  - Fix: `Program.cs` — clear `KnownIPNetworks` and `KnownProxies` on `ForwardedHeadersOptions` so Azure's proxy is trusted.
+  - Saved feedback memory: smoke tests must always be run against the live deployment during the verification phase of plan tasks.
+- **Bug fix: `datetime2 is incompatible with text` — migration generated for wrong provider**
+  - Root cause: `dotnet ef migrations add` was run without `DATABASE_PROVIDER=sqlserver`, so EF Core used SQLite provider and hardcoded `type: "TEXT"` for DateTime columns. On SQL Server, `text` is a deprecated LOB type incompatible with `datetime2` parameters.
+  - Fix 1: Created migration `FixSignInColumnTypes` that detects TEXT columns on SQL Server and drops/recreates them as `datetime2(7)`.
+  - Fix 2: Added try-catch safety net in `/auth/me` and `/auth/verify` so activity tracking writes can't crash login.
+  - Fix 3: `ForwardedHeaders` now clears `KnownIPNetworks`/`KnownProxies` so Azure's reverse proxy is trusted.
+  - Lesson: Always generate migrations with `DATABASE_PROVIDER=sqlserver` when targeting SQL Server.

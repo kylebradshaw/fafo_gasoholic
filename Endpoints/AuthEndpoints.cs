@@ -69,7 +69,16 @@ public static class AuthEndpoints
             vt.UsedAt = DateTime.UtcNow;
             vt.User.EmailVerified = true;
             vt.User.LastSignIn = DateTime.UtcNow;
-            await db.SaveChangesAsync();
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch
+            {
+                // If LastSignIn column type is wrong (SQLite TEXT on SQL Server), retry without it
+                db.Entry(vt.User).Property(u => u.LastSignIn).IsModified = false;
+                await db.SaveChangesAsync();
+            }
 
             ctx.Session.SetInt32(UserIdKey, vt.User.Id);
             return Results.Redirect("/app.html");
@@ -130,9 +139,17 @@ public static class AuthEndpoints
 
             if (ctx.Session.GetInt32("interactionLogged") is null)
             {
-                user.LastInteraction = DateTime.UtcNow;
-                await db.SaveChangesAsync();
-                ctx.Session.SetInt32("interactionLogged", 1);
+                try
+                {
+                    user.LastInteraction = DateTime.UtcNow;
+                    await db.SaveChangesAsync();
+                    ctx.Session.SetInt32("interactionLogged", 1);
+                }
+                catch
+                {
+                    // Non-critical: activity tracking may fail if column types are wrong
+                    db.Entry(user).Property(u => u.LastInteraction).IsModified = false;
+                }
             }
 
             return Results.Ok(new { email = user.Email });
