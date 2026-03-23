@@ -531,13 +531,13 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 5. **Bicep/env var** — add `SMOKE_TEST_SECRET` as a Container App env var, stored in Key Vault
 
 **Acceptance criteria:**
-- [ ] `./smoke-test.sh <live-url> <secret>` passes against the live deployment
-- [ ] `./smoke-test.sh <live-url> wrong-secret` fails at auth step
-- [ ] `./smoke-test.sh <live-url>` without secret fails gracefully (no dev-login available in prod without it)
-- [ ] Script exits 0 on all-pass, non-zero if any step fails
-- [ ] All steps print a clear PASS/FAIL line with the HTTP response
-- [ ] GitHub Actions workflow includes the smoke test step after image deploy
-- [ ] git commit created: `feat: task 14 — deployment smoke test script`
+- [x] `./smoke-test.sh <live-url> <secret>` passes against the live deployment
+- [x] `./smoke-test.sh <live-url> wrong-secret` fails at auth step (403 → FAIL on dev-login step)
+- [x] `./smoke-test.sh <live-url>` without secret fails gracefully ("no SMOKE_TEST_SECRET provided — cannot authenticate")
+- [x] Script exits 0 on all-pass, non-zero if any step fails
+- [x] All steps print a clear PASS/FAIL line with the HTTP response
+- [x] GitHub Actions workflow includes the smoke test step after image deploy
+- [x] git commit created: `feat: task 14 — deployment smoke test script`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 
@@ -573,13 +573,13 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 8. **Firewall** — allow Azure services to connect to the SQL server
 
 **Acceptance criteria:**
-- [ ] Azure SQL (or Postgres) provisioned and accessible from the Container App
-- [ ] `DATABASE_PROVIDER=sqlserver` set on Container App
-- [ ] EF Core migrations applied (tables: Users, Autos, Fillups, VerificationTokens, SessionCache, __EFMigrationsHistory)
-- [ ] Login, add auto, restart Container App revision, data persists
-- [ ] Sessions survive Container App cold-start (new revision doesn't lose auth)
-- [ ] Smoke test (`./smoke-test.sh`) passes end-to-end
-- [ ] git commit created: `feat: task 15 — persistent database storage`
+- [x] Azure SQL (West US 2, gasoholic-sql.database.windows.net) provisioned and accessible from the Container App
+- [x] `DATABASE_PROVIDER=sqlserver` set on Container App
+- [x] EF Core migrations applied (tables: Users, Autos, Fillups, VerificationTokens, SessionCache, __EFMigrationsHistory)
+- [x] Login, add auto, restart Container App revision, data persists (verified via smoke test across cold starts)
+- [x] Sessions survive Container App cold-start (SqlServer distributed cache replaces in-memory cache)
+- [x] Smoke test (`./smoke-test.sh`) passes end-to-end against live deployment
+- [x] git commit created: `feat: task 15 — persistent database storage`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 
