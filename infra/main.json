@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "18246194509549789619"
+      "templateHash": "8153922433522807683"
     }
   },
   "parameters": {
@@ -24,7 +24,8 @@
     }
   },
   "variables": {
-    "acrName": "[format('{0}acr', replace(parameters('appName'), '-', ''))]",
+    "acrBase": "[toLower(replace(parameters('appName'), '-', ''))]",
+    "acrName": "[format('{0}acr', variables('acrBase'))]",
     "kvName": "[format('{0}-kv', parameters('appName'))]",
     "envName": "[format('{0}-env', parameters('appName'))]"
   },
@@ -161,6 +162,11 @@
               "name": "acs-sender-domain",
               "keyVaultUrl": "[format('{0}secrets/AcsSenderDomain', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
               "identity": "system"
+            },
+            {
+              "name": "sql-connection",
+              "keyVaultUrl": "[format('{0}secrets/SqlConnection', reference(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), '2023-07-01').vaultUri)]",
+              "identity": "system"
             }
           ]
         },
@@ -172,11 +178,11 @@
               "env": [
                 {
                   "name": "DATABASE_PROVIDER",
-                  "value": "sqlite"
+                  "value": "sqlserver"
                 },
                 {
-                  "name": "ConnectionStrings__DefaultConnection",
-                  "value": "Data Source=/tmp/gasoholic.db"
+                  "name": "ConnectionStrings__SqlServer",
+                  "secretRef": "sql-connection"
                 },
                 {
                   "name": "ConnectionStrings__ACS",
@@ -188,7 +194,7 @@
                 },
                 {
                   "name": "CORS_ORIGINS",
-                  "value": "[format('https://{0}.{1}', parameters('appName'), reference(resourceId('Microsoft.App/managedEnvironments', variables('envName')), '2024-03-01').defaultDomain)]"
+                  "value": "[format('https://{0}.{1},https://gas.sdir.cc', parameters('appName'), reference(resourceId('Microsoft.App/managedEnvironments', variables('envName')), '2024-03-01').defaultDomain)]"
                 },
                 {
                   "name": "ASPNETCORE_ENVIRONMENT",
@@ -241,6 +247,10 @@
     "acrLoginServer": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-07-01').loginServer]"
+    },
+    "acrName": {
+      "type": "string",
+      "value": "[variables('acrName')]"
     },
     "keyVaultUri": {
       "type": "string",

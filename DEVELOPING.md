@@ -1,178 +1,114 @@
-# Gasoholic — Development & Deployment Guide
+# Gasoholic — Local Development Guide
 
-## Local development
-
-### Prerequisites
+## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10)
-- SQLite (bundled via NuGet — no install needed)
+- No other installs needed — SQLite is bundled via NuGet, no separate DB server required
 
-### Run locally
+## Running locally
 
 ```bash
 dotnet run
 ```
 
-Open [http://localhost:5000](http://localhost:5000). The SQLite database (`gasoholic.db`) is created automatically on first run.
+Open [http://localhost:5000](http://localhost:5000). The SQLite database (`gasoholic.db`) is created automatically on first run via `Database.Migrate()` in `Program.cs`.
 
-### Environment
+Email magic links are logged to the console in development — no real email is sent. Click the link from the terminal output to log in.
+
+## Environment variables
 
 | Variable | Default | Notes |
 |---|---|---|
 | `DATABASE_PROVIDER` | `sqlite` | `sqlite` or `sqlserver` |
 | `ConnectionStrings__DefaultConnection` | `Data Source=gasoholic.db` | SQLite path |
-| `ConnectionStrings__SqlServer` | _(none)_ | Azure SQL connection string |
 | `CORS_ORIGINS` | `http://localhost:5000,https://localhost:5001` | Comma-separated allowed origins |
-| `ASPNETCORE_ENVIRONMENT` | `Development` | Set to `Production` in Azure |
+| `ASPNETCORE_ENVIRONMENT` | `Development` | Controls email sending, session behavior |
 
-### Build
+In `Development` mode: magic links print to console, sessions use in-memory cache, SQLite is the default database.
+
+## Build
 
 ```bash
-dotnet build
+dotnet build          # debug
 dotnet build -c Release
 ```
 
----
-
-## Docker (local testing)
-
-### Build
+## Testing the container locally
 
 ```bash
-# x64 (production / CI):
-docker build -t gasoholic .
-
-# Apple Silicon (Docker Desktop uses an x86 VM — build arm64 natively):
+# Build (Apple Silicon — arm64):
 docker buildx build --platform linux/arm64 -t gasoholic --load .
-```
 
-### Run
-
-```bash
-# x64:
-docker run -e DATABASE_PROVIDER=sqlite \
-  -e "ConnectionStrings__DefaultConnection=Data Source=/tmp/gasoholic.db" \
-  -p 8080:8080 gasoholic
-
-# Apple Silicon:
+# Run:
 docker run --platform linux/arm64 \
   -e DATABASE_PROVIDER=sqlite \
   -e "ConnectionStrings__DefaultConnection=Data Source=/tmp/gasoholic.db" \
   -p 8080:8080 gasoholic
+
+# Health check:
+curl http://localhost:8080/health   # → {"status":"ok"}
 ```
-
-Health check: `curl http://localhost:8080/health` → `{"status":"ok"}`
-
----
-
-## Deploying to Azure
-
-### One-time setup
-
-**1. Install Azure CLI and log in**
-
-```bash
-brew install azure-cli
-az login
-```
-
-**2. Create a resource group**
-
-```bash
-az group create --name gasoholic-rg --location eastus
-```
-
-**3. Register required providers** (new subscriptions only)
-
-```bash
-az provider register --namespace Microsoft.Sql --wait
-az provider register --namespace Microsoft.Web --wait
-az provider register --namespace Microsoft.KeyVault --wait
-```
-
-**4. Provision infrastructure**
-
-```bash
-az deployment group create \
-  --resource-group gasoholic-rg \
-  --template-file infra/main.bicep \
-  --parameters appName=gasoholic sqlAdminPassword='YourStr0ngP@ss!'
-```
-
-> The SQL admin password is marked `@secure()` in Bicep — it is not logged in deployment history.
-> After provisioning it is stored in Key Vault. You can discard it.
-
-Default tier is B1 Basic (~$13/mo). To start with the free F1 tier:
-
-```bash
---parameters appName=gasoholic sqlAdminPassword='...' appServiceSku=F1
-```
-
-**5. Create the session cache table** (SQL Server distributed session)
-
-```bash
-CONN=$(az keyvault secret show --vault-name gasoholic-kv --name SqlConnection --query value -o tsv)
-dotnet tool install --global dotnet-sql-cache 2>/dev/null || true
-dotnet sql-cache create "$CONN" dbo SessionCache
-```
-
-**6. Run database migrations**
-
-```bash
-CONN=$(az keyvault secret show --vault-name gasoholic-kv --name SqlConnection --query value -o tsv)
-DATABASE_PROVIDER=sqlserver dotnet ef database update --connection "$CONN"
-```
-
-**7. Connect GitHub Actions**
-
-- Azure Portal → App Service → **Overview** → **Get publish profile** → download
-- GitHub → repo **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-  - Name: `AZURE_WEBAPP_PUBLISH_PROFILE`
-  - Value: contents of the downloaded file
-- Push to `main` — CI builds and deploys automatically
-
-**8. Tighten SQL firewall** (recommended)
-
-- Azure Portal → SQL Server → **Networking**
-- Add your App Service's outbound IPs (found under App Service → **Properties**)
-- Remove the broad `AllowAzureServices` rule
-
----
-
-## Subsequent deployments
-
-Every push to `main` triggers `.github/workflows/azure-deploy.yml` — no manual steps needed.
-
-Database migrations run automatically on startup (`Database.Migrate()` in `Program.cs`).
 
 ---
 
 ## Project structure
 
 ```
-gasoholic.csproj      .NET 10 Web API project
-Program.cs            App entry point, DI, middleware
-Data/                 EF Core DbContext
-Endpoints/            Auth, Autos, Fillups minimal API endpoints
-Migrations/           EF Core migration files
-Models/               Entity models and enums
-wwwroot/              Static frontend (HTML/CSS/JS)
+gasoholic.csproj          .NET 10 project file — packages, SDK version
+Program.cs                Entry point: DI registration, middleware, route mapping
+appsettings.json          Base config (SQLite connection string, session timeout)
+appsettings.Development.json  Dev-only overrides
+
+Data/
+  AppDbContext.cs         EF Core DbContext — all three DbSets, model config
+
+Endpoints/
+  AuthEndpoints.cs        /auth/login, /auth/logout, /auth/me, /auth/verify, /auth/resend
+  AutoEndpoints.cs        /api/autos CRUD
+  FillupEndpoints.cs      /api/autos/{id}/fillups CRUD + MPG computation
+  SmokeTestEndpoints.cs   /auth/dev-login (only active when SMOKE_TEST_SECRET is set)
+
+Models/
+  User.cs                 User entity (Id, Email, EmailVerified, CreatedAt)
+  Auto.cs                 Auto entity (Brand, Model, Plate, Odometer)
+  Fillup.cs               Fillup entity (all fuel fields, GPS coords, partial fill flag)
+  VerificationToken.cs    Magic link token entity (GUID, expiry, used timestamp)
+  Enums.cs                FuelType enum: Regular, MidGrade, Premium, Diesel, E85
+
+Migrations/               EF Core migration files — never edit by hand
+  *_InitialCreate.cs      Base schema (Users, Autos, Fillups)
+  *_AddEmailVerification.cs  Adds EmailVerified + VerificationTokens table
+
+wwwroot/
+  index.html              Login page — email input, magic link pending state
+  app.html                Main app shell — auto selector, Log tab, Autos tab
+
 infra/
-  main.bicep          Azure infrastructure (App Service, SQL, Key Vault)
-  README.md           Detailed Azure deployment guide
+  main.bicep              Azure infrastructure as code (ACR, Container App, KV, ACS)
+
 .github/
   workflows/
-    azure-deploy.yml  CI/CD pipeline
-Dockerfile            Multi-stage container build
+    azure-deploy.yml      CI/CD: build image → push to ACR → update Container App → smoke test
+
+Dockerfile                Multi-stage build: SDK → publish → aspnet runtime, port 8080
+smoke-test.sh             End-to-end bash test script against any deployed URL
+deploy.sh                 One-command provision + deploy to Azure
 ```
 
----
+## How code flows from dev to production
 
-## Cost estimate
+1. **Write** — edit `.cs` files in `Endpoints/`, `Models/`, `Data/`; edit HTML/JS in `wwwroot/`
+2. **Test locally** — `dotnet run`, hit `localhost:5000`
+3. **Commit + push to `main`** — GitHub Actions picks it up automatically
+4. **CI builds** — `docker buildx build --platform linux/amd64` using the `Dockerfile`
+5. **CI pushes** — image tagged with the git short SHA → `gasoholicacr.azurecr.io/gasoholic:<sha>`
+6. **CI deploys** — `az containerapp update --image <new-tag>` creates a new Container App revision
+7. **Smoke test runs** — `smoke-test.sh` hits the live URL, verifies all 14 steps pass
 
-| Resource | Tier | $/mo |
-|---|---|---|
-| App Service Plan | F1 Free | $0 (60 min/day CPU cap, no always-on) |
-| App Service Plan | B1 Basic | ~$13 (recommended for production) |
-| Azure SQL Database | Basic 5 DTU | ~$5 |
-| Key Vault | Standard | ~$0.03 |
+Schema changes require an EF Core migration:
+
+```bash
+dotnet ef migrations add <MigrationName>
+# commit the generated file in Migrations/
+# migrations run automatically on startup via Database.Migrate() in Program.cs
+```
