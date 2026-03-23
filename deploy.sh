@@ -3,9 +3,10 @@
 # deploy.sh — Deploy gasoholic to Azure Container Apps
 #
 # Usage:
-#   ./deploy.sh              # deploy app only (build → push → update container)
-#   ./deploy.sh --infra-only # provision/update Azure infrastructure only (Bicep)
-#   ./deploy.sh --with-infra # provision infrastructure AND deploy app
+#   ./deploy.sh                                  # deploy app only (build → push → update container)
+#   ./deploy.sh --infra-only                     # provision/update Azure infrastructure only (Bicep)
+#   ./deploy.sh --with-infra                     # provision infrastructure AND deploy app
+#   ./deploy.sh --infra-only --custom-email-domain  # link verified custom email domain (gas.sdir.cc)
 #
 # Infrastructure changes (Bicep) are opt-in via --with-infra or --infra-only.
 # Running without flags is safe and fast — it only touches the container image.
@@ -27,11 +28,13 @@ CUSTOM_DOMAIN="gas.sdir.cc"
 # ── Flags ─────────────────────────────────────────────────────────────────────
 INFRA_ONLY=false
 WITH_INFRA=false
+USE_CUSTOM_EMAIL_DOMAIN=false
 for arg in "$@"; do
   case $arg in
-    --infra-only) INFRA_ONLY=true ;;
-    --with-infra) WITH_INFRA=true ;;
-    --app-only)   ;; # accepted for backwards compat, now the default
+    --infra-only)           INFRA_ONLY=true ;;
+    --with-infra)           WITH_INFRA=true ;;
+    --app-only)             ;; # accepted for backwards compat, now the default
+    --custom-email-domain)  USE_CUSTOM_EMAIL_DOMAIN=true ;;
   esac
 done
 
@@ -81,7 +84,7 @@ if [[ "$WITH_INFRA" == true || "$INFRA_ONLY" == true ]]; then
   DEPLOY_OUT=$(az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
     --template-file "$(dirname "$0")/infra/main.bicep" \
-    --parameters appName="$APP_NAME" \
+    --parameters appName="$APP_NAME" useCustomEmailDomain="$USE_CUSTOM_EMAIL_DOMAIN" \
     --output json)
 
   APP_URL=$(echo "$DEPLOY_OUT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['appUrl']['value'])")

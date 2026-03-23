@@ -726,7 +726,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - [ ] Test email sent from `verify@gas.sdir.cc` lands in inbox (not spam) on Gmail and Outlook (manual check)
 - [x] Existing Playwright e2e tests pass (no regressions)
 - [x] `dotnet build` passes
-- [ ] git commit created: `feat: task 18 — ACS custom domain for email deliverability`
+- [x] git commit created: `feat: task 18 — ACS custom domain for email deliverability`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 

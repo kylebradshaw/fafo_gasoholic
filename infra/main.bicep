@@ -31,10 +31,20 @@ resource acsEmail 'Microsoft.Communication/emailServices@2023-04-01' = {
   }
 }
 
+// Azure-managed domain — kept as fallback and used until custom domain is verified.
+resource acsManagedDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
+  parent: acsEmail
+  name: 'AzureManagedDomain'
+  location: 'global'
+  properties: {
+    domainManagement: 'AzureManaged'
+  }
+}
+
 // Custom domain — requires DNS records (SPF, DKIM, DKIM2) added manually after deploy.
 // See DEPLOYMENT.md "Email Domain Setup (Task 18)" for DNS setup steps.
 // Sender: verify@gas.sdir.cc
-resource acsDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
+resource acsCustomDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
   parent: acsEmail
   name: 'gas.sdir.cc'
   location: 'global'
@@ -43,13 +53,18 @@ resource acsDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = 
   }
 }
 
+@description('Set to true after custom domain DNS is verified in Azure Portal. This links the custom domain to ACS for sending.')
+param useCustomEmailDomain bool = false
+
 // ACS Communication Service (links to email service for sending)
+// Phase 1 (default): links Azure-managed domain so email keeps working
+// Phase 2 (after DNS verification): set useCustomEmailDomain=true to switch to custom domain
 resource acsService 'Microsoft.Communication/communicationServices@2023-04-01' = {
   name: '${appName}-comms'
   location: 'global'
   properties: {
     dataLocation: 'UnitedStates'
-    linkedDomains: [ acsDomain.id ]
+    linkedDomains: useCustomEmailDomain ? [ acsCustomDomain.id ] : [ acsManagedDomain.id ]
   }
 }
 
@@ -81,7 +96,7 @@ resource acsDomainSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'AcsSenderDomain'
   properties: {
-    value: acsDomain.properties.mailFromSenderDomain
+    value: useCustomEmailDomain ? acsCustomDomain.properties.mailFromSenderDomain : acsManagedDomain.properties.mailFromSenderDomain
   }
 }
 

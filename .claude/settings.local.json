@@ -24,7 +24,12 @@
       "Bash(az deployment:*)",
       "Bash(az sql:*)",
       "Bash(kill %1)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(az containerapp:*)",
+      "Bash(dig gas.sdir.cc ANY +short)",
+      "Bash(dig gas.sdir.cc CNAME +short)",
+      "Bash(dig gas.sdir.cc TXT +short)",
+      "Bash(dig gas.sdir.cc A +short)"
     ]
   },
   "sandbox": {
