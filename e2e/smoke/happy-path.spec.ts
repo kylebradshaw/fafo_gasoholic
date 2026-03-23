@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request as requestFactory } from '@playwright/test';
+import { devLogin, uniqueEmail } from '../helpers/auth';
 
 /**
  * Smoke tests — full happy-path API walkthrough against a deployed environment.
@@ -242,6 +243,30 @@ test.describe('Happy path @smoke', () => {
 
     const res = await request.delete(`/api/autos/${autoId}`);
     expect(res.status(), 'DELETE auto should return 204').toBe(204);
+  });
+
+  test('auto selector defaults to first auto when no fillups exist', { tag: ['@smoke'] }, async ({ page, context }) => {
+    test.skip(!SMOKE_SECRET, 'SMOKE_TEST_SECRET not set — cannot authenticate without it');
+
+    const BASE = process.env.BASE_URL ?? 'http://localhost:5100';
+    const api = await requestFactory.newContext({ baseURL: BASE });
+    const state = await devLogin(api, uniqueEmail('selector-smoke'));
+
+    // Create an auto with no fillups
+    await api.post('/api/autos', {
+      data: { brand: 'Selector', model: 'Test', plate: 'SEL001', odometer: 1000 },
+    });
+    await api.dispose();
+
+    await context.addCookies(state.cookies);
+    await page.goto('/app.html');
+
+    // Selector must not show the placeholder — it must have a real auto selected
+    const selectedValue = await page.locator('#autoSelector').inputValue();
+    expect(selectedValue, 'auto selector should not be empty when autos exist').not.toBe('');
+
+    // The log panel must not show the "select an auto" hint
+    await expect(page.locator('#fillupContent')).not.toHaveText(/Select an auto/i);
   });
 
   test('logout clears session', { tag: ['@smoke'] }, async ({ request }) => {

@@ -600,6 +600,8 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - [x] User with autos but no fillups: selector defaults to the first auto in the list
 - [x] After manually switching to a different auto, reloading autos (add/edit/delete) preserves the user's selection if the auto still exists
 - [x] User with no autos: selector shows "— select auto —" as before
+- [x] On initial page load with at least one auto, the fillup log renders immediately without requiring a manual selector interaction
+- [x] Smoke test regression: `auto selector defaults to first auto when no fillups exist` passes in `happy-path.spec.ts` (@smoke tagged)
 - [x] git commit created: `feat: task 16 — default selector to most recently fueled auto`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`

@@ -537,6 +537,7 @@ async function loadAutos() {
   autos = await res.json();
   renderAutoSelector();
   renderAutoGrid();
+  renderFillups();
 }
 
 function renderAutoSelector() {
@@ -554,6 +555,7 @@ function renderAutoSelector() {
   } else if (autos.length) {
     // Default to the auto with the most recent fillup; fall back to first
     const best = autos.reduce((a, b) => {
+      if (!a.latestFillupAt && !b.latestFillupAt) return a; // both null → keep first
       if (!a.latestFillupAt) return b;
       if (!b.latestFillupAt) return a;
       return a.latestFillupAt > b.latestFillupAt ? a : b;
