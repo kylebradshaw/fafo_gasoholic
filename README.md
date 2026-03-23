@@ -36,3 +36,11 @@ npx playwright test
 ```
 
 Tests start the server automatically if it isn't already running.
+
+## Smoke test
+
+  az keyvault secret show --vault-name gasoholic-kv --name SmokeTestSecret --query value -o tsv
+
+  Then run:
+
+  ./smoke-test.sh <website> <secret>
