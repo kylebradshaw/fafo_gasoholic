@@ -7,6 +7,9 @@ obj/
 node_modules/
 e2e/playwright-report/
 e2e/test-results/
+tests/node_modules/
+tests/playwright-report/
+tests/test-results/
 
 # Scripts
 deploy.sh

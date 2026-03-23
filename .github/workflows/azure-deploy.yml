@@ -59,17 +59,36 @@ jobs:
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP }}:${{ github.sha }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install Playwright
+        working-directory: tests
+        run: npm ci
+
       - name: Smoke test
+        working-directory: tests
         env:
-          APP_URL: https://gasoholic.yellowcliff-a9ca470c.eastus.azurecontainerapps.io
-          SMOKE_SECRET: ${{ secrets.SMOKE_TEST_SECRET }}
+          BASE_URL: https://gasoholic.yellowcliff-a9ca470c.eastus.azurecontainerapps.io
+          SMOKE_TEST_SECRET: ${{ secrets.SMOKE_TEST_SECRET }}
         run: |
           # Wait for new revision to be healthy (up to 3 min)
           for i in $(seq 1 18); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$APP_URL/health" || echo 0)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE_URL/health" || echo 0)
             [ "$STATUS" = "200" ] && break
             echo "Waiting for container to start ($i/18)..."
             sleep 10
           done
-          chmod +x smoke-test.sh
-          ./smoke-test.sh "$APP_URL" "$SMOKE_SECRET"
+          npm run test:smoke
+
+      - name: Upload smoke test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-report
+          path: tests/playwright-report/
+          retention-days: 7
