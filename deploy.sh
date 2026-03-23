@@ -24,7 +24,6 @@ set -euo pipefail
 APP_NAME="gasoholic"
 RESOURCE_GROUP="gasoholic-rg"
 LOCATION="eastus"          # East US — all resources deployed here
-ACR_NAME="gasoholicacr"
 
 # ── Flags ─────────────────────────────────────────────────────────────────────
 INFRA_ONLY=false
@@ -87,11 +86,13 @@ if [[ "$APP_ONLY" == false ]]; then
 
   APP_URL=$(echo "$DEPLOY_OUT"    | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['appUrl']['value'])")
   ACR_SERVER=$(echo "$DEPLOY_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrLoginServer']['value'])")
+  ACR_NAME=$(echo "$DEPLOY_OUT"   | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrName']['value'])")
 
   # Save outputs for --app-only runs
   {
     echo "APP_URL='${APP_URL}'"
     echo "ACR_SERVER='${ACR_SERVER}'"
+    echo "ACR_NAME='${ACR_NAME}'"
   } > "$SECRETS_FILE"
   chmod 600 "$SECRETS_FILE"
 

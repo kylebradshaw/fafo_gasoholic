@@ -6,7 +6,7 @@ param location string = resourceGroup().location
 
 // Derived names
 var acrBase = toLower(replace(appName, '-', ''))
-var acrName = '${take('${acrBase}gas', 47)}acr'   // ACR: alphanumeric only, always 5-50 chars
+var acrName = '${acrBase}acr'   // ACR: alphanumeric only (e.g. gasoholicacr)
 var kvName = '${appName}-kv'
 var envName = '${appName}-env'
 
@@ -180,4 +180,5 @@ resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 
 output appUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output acrLoginServer string = acr.properties.loginServer
+output acrName string = acr.name
 output keyVaultUri string = keyVault.properties.vaultUri
