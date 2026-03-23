@@ -13,7 +13,13 @@ public static class AutoEndpoints
             var autos = await db.Autos
                 .Where(a => a.UserId == userId)
                 .OrderBy(a => a.Brand).ThenBy(a => a.Model)
-                .Select(a => new { a.Id, a.Brand, a.Model, a.Plate, a.Odometer })
+                .Select(a => new
+                {
+                    a.Id, a.Brand, a.Model, a.Plate, a.Odometer,
+                    LatestFillupAt = db.Fillups
+                        .Where(f => f.AutoId == a.Id)
+                        .Max(f => (DateTime?)f.FilledAt)
+                })
                 .ToListAsync();
 
             return Results.Ok(autos);

@@ -549,7 +549,17 @@ function renderAutoSelector() {
     autoSelector.appendChild(opt);
   });
   if (prev && autos.find(a => a.id === parseInt(prev))) {
+    // Preserve user's manual selection if auto still exists
     autoSelector.value = prev;
+  } else if (autos.length) {
+    // Default to the auto with the most recent fillup; fall back to first
+    const best = autos.reduce((a, b) => {
+      if (!a.latestFillupAt) return b;
+      if (!b.latestFillupAt) return a;
+      return a.latestFillupAt > b.latestFillupAt ? a : b;
+    });
+    autoSelector.value = best.id;
+    currentAutoId = best.id;
   } else {
     currentAutoId = null;
   }

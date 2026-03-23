@@ -585,6 +585,27 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 16 — Default Auto Selector to Most Recently Fueled Auto
+
+**Goal:** When the app loads and the user has at least one auto, pre-select the auto that had the most recent fillup instead of showing "— select auto —". If no auto has any fillups, fall back to the first auto in the list.
+
+**Work:**
+
+1. **API** — add `latestFillupAt` (ISO datetime string or `null`) to the `GET /api/autos` response via a left-join subquery on `Fillups.FilledAt`. No new endpoint; just extend the existing projection.
+
+2. **Frontend** — in `renderAutoSelector`, on first load (when `prev` is empty and no `currentAutoId` is set), pick the auto with the highest `latestFillupAt`; if all are `null`, pick `autos[0]`. Set `autoSelector.value` and `currentAutoId` accordingly, then call `renderFillups()`.
+
+**Acceptance criteria:**
+- [x] User with 2+ autos: selector defaults to the auto whose most recent fillup is latest
+- [x] User with autos but no fillups: selector defaults to the first auto in the list
+- [x] After manually switching to a different auto, reloading autos (add/edit/delete) preserves the user's selection if the auto still exists
+- [x] User with no autos: selector shows "— select auto —" as before
+- [x] git commit created: `feat: task 16 — default selector to most recently fueled auto`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**
