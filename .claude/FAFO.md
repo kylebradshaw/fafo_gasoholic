@@ -80,3 +80,9 @@ This file is appended with every user interaction in each Claude Code session.
   - Fix 2: Added try-catch safety net in `/auth/me` and `/auth/verify` so activity tracking writes can't crash login.
   - Fix 3: `ForwardedHeaders` now clears `KnownIPNetworks`/`KnownProxies` so Azure's reverse proxy is trusted.
   - Lesson: Always generate migrations with `DATABASE_PROVIDER=sqlserver` when targeting SQL Server.
+
+### Task 20 — Smoke Test User Cleanup
+
+- **`Endpoints/SmokeTestEndpoints.cs`** — Added `DELETE /auth/dev-cleanup` endpoint: gated by `X-Smoke-Test-Secret`, validates email matches `@example.com` or `@test.com`, deletes user (cascade handles autos/fillups/tokens), returns 204/404/400/403 as appropriate.
+- **`e2e/helpers/auth.ts`** — Added `cleanupUser(api, email)` helper; silently succeeds on 404 (idempotent).
+- **`e2e/smoke/happy-path.spec.ts`** — Added `afterAll` that calls `cleanupUser` for the test email; fixed `selector-smoke` test to clean up its own unique email inline; added 3 regression tests: reject non-test domain (400), reject wrong secret (403), verify delete+second-delete returns 404.

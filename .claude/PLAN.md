@@ -785,6 +785,53 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ---
 
+### Task 20 — Smoke Test User Cleanup
+
+**Goal:** Smoke and e2e test runs create users via `/auth/dev-login` that persist in the production database forever. Add a cleanup mechanism so test users are removed after each test run.
+
+**Key decisions:**
+| Concern | Choice |
+|---|---|
+| Identification | Test users have emails matching `*@example.com` or `*@test.com` |
+| Cleanup trigger | New `DELETE /auth/dev-cleanup` endpoint (gated by `SMOKE_TEST_SECRET`) |
+| Scope | Deletes the user **and** cascades to their autos, fillups, and verification tokens |
+| When to call | At the end of the smoke test suite (Playwright `afterAll` or final test) |
+| Safety | Endpoint only exists when `SMOKE_TEST_SECRET` is configured; rejects non-test emails |
+
+---
+
+**Work:**
+
+1. **New endpoint (`Endpoints/SmokeTestEndpoints.cs`)**
+   - `DELETE /auth/dev-cleanup` — accepts `{ email: string }`, gated by `X-Smoke-Test-Secret` header
+   - Validates the email matches a test domain (`@example.com` or `@test.com`) — refuses to delete real users
+   - Deletes the user and all related data (cascade handles autos/fillups/tokens)
+   - Returns `204` on success, `404` if user not found, `400` if email is not a test domain
+
+2. **Smoke test cleanup (`e2e/smoke/happy-path.spec.ts`)**
+   - Add a final test (or `test.afterAll`) that calls `DELETE /auth/dev-cleanup` for each test email used
+   - Verify the user no longer exists (optional: `GET /auth/me` returns 401 after cleanup)
+
+3. **Playwright e2e cleanup (`e2e/helpers/auth.ts`)**
+   - Export a `cleanupUser(request, email)` helper
+   - Wire into existing test suites that use `devLogin` / `uniqueEmail`
+
+---
+
+**Acceptance criteria:**
+- [x] `DELETE /auth/dev-cleanup` endpoint exists, gated by `SMOKE_TEST_SECRET`
+- [x] Endpoint refuses to delete emails that don't match `@example.com` or `@test.com`
+- [x] Endpoint deletes user + cascaded data (autos, fillups, verification tokens)
+- [x] Smoke test suite calls cleanup for all test users at end of run
+- [x] Running smoke tests twice leaves no duplicate/orphaned test users in the database
+- [x] Existing e2e tests still pass
+- [x] `dotnet build` passes
+- [x] git commit created: `feat: task 20 — smoke test user cleanup`
+
+**Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
+
+---
+
 ## Loop Execution Notes
 
 **Start the full sequential loop (first tasks with unchecked criteria) with:**

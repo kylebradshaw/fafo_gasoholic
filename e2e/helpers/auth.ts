@@ -28,3 +28,18 @@ export async function devLogin(api: APIRequestContext, email: string) {
 export function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}@test.com`;
 }
+
+/**
+ * Deletes a test user and all their data via the dev-cleanup endpoint.
+ * Only works for @example.com and @test.com addresses.
+ * Silently succeeds if the user doesn't exist (idempotent).
+ */
+export async function cleanupUser(api: APIRequestContext, email: string) {
+  const secret = process.env.SMOKE_TEST_SECRET ?? '';
+  if (!secret) return;
+  await api.delete('/auth/dev-cleanup', {
+    headers: { 'X-Smoke-Test-Secret': secret },
+    data: { email },
+  });
+  // 204 = deleted, 404 = already gone — both are fine
+}

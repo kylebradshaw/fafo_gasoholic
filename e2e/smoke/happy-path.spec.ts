@@ -1,5 +1,5 @@
 import { test, expect, request as requestFactory } from '@playwright/test';
-import { devLogin, uniqueEmail } from '../helpers/auth';
+import { devLogin, uniqueEmail, cleanupUser } from '../helpers/auth';
 
 /**
  * Smoke tests — full happy-path API walkthrough against a deployed environment.
@@ -23,6 +23,16 @@ let fillup1Id: number;
 let fillup2Id: number;
 
 test.describe('Happy path @smoke', () => {
+
+  test.afterAll(async () => {
+    if (!SMOKE_SECRET) return;
+    // Clean up all test users created during this run
+    const api = await requestFactory.newContext({
+      baseURL: process.env.BASE_URL ?? 'http://localhost:5100',
+    });
+    await cleanupUser(api, testEmail);
+    await api.dispose();
+  });
 
   test('health check', { tag: ['@smoke'] }, async ({ request }) => {
     const res = await request.get('/health');
@@ -250,12 +260,14 @@ test.describe('Happy path @smoke', () => {
 
     const BASE = process.env.BASE_URL ?? 'http://localhost:5100';
     const api = await requestFactory.newContext({ baseURL: BASE });
-    const state = await devLogin(api, uniqueEmail('selector-smoke'));
+    const selectorEmail = uniqueEmail('selector-smoke');
+    const state = await devLogin(api, selectorEmail);
 
     // Create an auto with no fillups
     await api.post('/api/autos', {
       data: { brand: 'Selector', model: 'Test', plate: 'SEL001', odometer: 1000 },
     });
+    await cleanupUser(api, selectorEmail);
     await api.dispose();
 
     await context.addCookies(state.cookies);
@@ -282,6 +294,49 @@ test.describe('Happy path @smoke', () => {
 
     const me = await request.get('/auth/me');
     expect(me.status(), '/auth/me after logout should return 401').toBe(401);
+  });
+
+  test('cleanup: reject non-test email domain', { tag: ['@smoke'] }, async ({ request }) => {
+    test.skip(!SMOKE_SECRET, 'requires smoke secret');
+
+    const res = await request.delete('/auth/dev-cleanup', {
+      headers: { 'X-Smoke-Test-Secret': SMOKE_SECRET },
+      data: { email: 'real-user@gmail.com' },
+    });
+    expect(res.status(), 'cleanup should reject non-test domains').toBe(400);
+  });
+
+  test('cleanup: wrong secret is rejected', { tag: ['@smoke'] }, async ({ request }) => {
+    const res = await request.delete('/auth/dev-cleanup', {
+      headers: { 'X-Smoke-Test-Secret': 'wrong-secret' },
+      data: { email: 'test@example.com' },
+    });
+    expect(res.status(), 'cleanup with wrong secret should return 403').toBe(403);
+  });
+
+  test('cleanup: test user deleted after run', { tag: ['@smoke'] }, async ({ request }) => {
+    test.skip(!SMOKE_SECRET, 'requires smoke secret');
+
+    // Create a fresh user
+    const email = `cleanup-verify-${Date.now()}@example.com`;
+    await request.post('/auth/dev-login', {
+      headers: { 'X-Smoke-Test-Secret': SMOKE_SECRET },
+      data: { email },
+    });
+
+    // Delete it
+    const del = await request.delete('/auth/dev-cleanup', {
+      headers: { 'X-Smoke-Test-Secret': SMOKE_SECRET },
+      data: { email },
+    });
+    expect(del.status(), 'DELETE /auth/dev-cleanup should return 204').toBe(204);
+
+    // Second delete returns 404
+    const del2 = await request.delete('/auth/dev-cleanup', {
+      headers: { 'X-Smoke-Test-Secret': SMOKE_SECRET },
+      data: { email },
+    });
+    expect(del2.status(), 'second cleanup should return 404').toBe(404);
   });
 
 });

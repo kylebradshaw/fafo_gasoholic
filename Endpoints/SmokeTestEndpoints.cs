@@ -43,6 +43,35 @@ public static class SmokeTestEndpoints
             }
         });
 
+        // DELETE /auth/dev-cleanup
+        // Deletes a test user and all their data (autos, fillups, verification tokens via cascade).
+        // Only permits emails ending in @example.com or @test.com to prevent accidental real-user deletion.
+        app.MapDelete("/auth/dev-cleanup", async (
+            HttpContext ctx,
+            AppDbContext db) =>
+        {
+            var provided = ctx.Request.Headers["X-Smoke-Test-Secret"].ToString();
+            if (provided != secret)
+                return Results.Json(new { error = "forbidden" }, statusCode: 403);
+
+            var body = await ctx.Request.ReadFromJsonAsync<DevCleanupRequest>();
+            if (body is null || string.IsNullOrWhiteSpace(body.Email))
+                return Results.BadRequest(new { error = "email required" });
+
+            var email = body.Email.Trim().ToLowerInvariant();
+            if (!email.EndsWith("@example.com") && !email.EndsWith("@test.com"))
+                return Results.BadRequest(new { error = "only @example.com and @test.com addresses may be cleaned up" });
+
+            var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .FirstOrDefaultAsync(db.Users, u => u.Email == email);
+            if (user is null)
+                return Results.NotFound(new { error = "user not found" });
+
+            db.Users.Remove(user);
+            await db.SaveChangesAsync();
+            return Results.NoContent();
+        });
+
         app.MapPost("/auth/dev-login", async (
             HttpContext ctx,
             AppDbContext db) =>
@@ -92,4 +121,5 @@ public static class SmokeTestEndpoints
 }
 
 public record DevLoginRequest(string Email);
+public record DevCleanupRequest(string Email);
 public record TestEmailRequest(string Email);
