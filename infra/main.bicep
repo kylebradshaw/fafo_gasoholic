@@ -135,6 +135,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SqlConnection'
           identity: 'system'
         }
+        {
+          name: 'smoke-test-secret'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SmokeTestSecret'
+          identity: 'system'
+        }
       ]
     }
     template: {
@@ -148,6 +153,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'ConnectionStrings__ACS',                  secretRef: 'acs-connection' }
             { name: 'AcsSenderDomain',                         secretRef: 'acs-sender-domain' }
             { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain},https://gas.sdir.cc' }
+            { name: 'SmokeTestSecret',                         secretRef: 'smoke-test-secret' }
             { name: 'ASPNETCORE_ENVIRONMENT',                  value: 'Production' }
             { name: 'ASPNETCORE_URLS',                         value: 'http://+:8080' }
           ]
