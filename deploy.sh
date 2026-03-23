@@ -114,6 +114,8 @@ fi
 # ── Build & push image ────────────────────────────────────────────────────────
 if [[ "$INFRA_ONLY" == false ]]; then
   source "$SECRETS_FILE"
+  # Derive ACR_NAME from ACR_SERVER if not stored in secrets file (older deploys)
+  ACR_NAME="${ACR_NAME:-${ACR_SERVER%%.*}}"
 
   log "Logging in to ACR ($ACR_SERVER)..."
   az acr login --name "$ACR_NAME"
