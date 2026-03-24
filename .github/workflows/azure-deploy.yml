@@ -68,7 +68,7 @@ jobs:
 
       - name: Install Playwright
         working-directory: e2e
-        run: npm ci
+        run: npm ci && npx playwright install --with-deps chromium
 
       - name: Smoke test
         working-directory: e2e
