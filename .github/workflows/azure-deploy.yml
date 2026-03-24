@@ -10,6 +10,7 @@ env:
   AZURE_CONTAINER_APP: gasoholic
   AZURE_RESOURCE_GROUP: gasoholic-rg
   ACR_NAME: gasoholicacr
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-deploy:
