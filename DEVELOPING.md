@@ -11,9 +11,17 @@
 dotnet run
 ```
 
-Open [http://localhost:5000](http://localhost:5000). The SQLite database (`gasoholic.db`) is created automatically on first run via `Database.Migrate()` in `Program.cs`.
+Open [http://localhost:5082](http://localhost:5082). The SQLite database (`gasoholic.db`) is created automatically on first run via `Database.Migrate()` in `Program.cs`.
 
-Email magic links are logged to the console in development — no real email is sent. Click the link from the terminal output to log in.
+> **Port note:** The app binds to `localhost:5082` (configured in `Properties/launchSettings.json`), not 5000.
+
+Email magic links are logged to the console in development — no real email is sent. Look for a line like:
+
+```
+[DEV] Magic link: http://localhost:5082/auth/verify?token=...
+```
+
+Copy and open that URL in the browser to complete login.
 
 ## Environment variables
 
@@ -21,7 +29,7 @@ Email magic links are logged to the console in development — no real email is 
 |---|---|---|
 | `DATABASE_PROVIDER` | `sqlite` | `sqlite` or `sqlserver` |
 | `ConnectionStrings__DefaultConnection` | `Data Source=gasoholic.db` | SQLite path |
-| `CORS_ORIGINS` | `http://localhost:5000,https://localhost:5001` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | `http://localhost:5082,https://localhost:7046` | Comma-separated allowed origins |
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Controls email sending, session behavior |
 
 In `Development` mode: magic links print to console, sessions use in-memory cache, SQLite is the default database.
