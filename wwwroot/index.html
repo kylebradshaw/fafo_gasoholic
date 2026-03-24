@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Gasoholic — Welcome!</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    html, body {
+    width: 100dvw;
+    min-height: 100dvh;
+    overflow-x: hidden; /* prevents horizontal scroll from dvw on some browsers */
+    }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: #f5f5f5;
-      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
