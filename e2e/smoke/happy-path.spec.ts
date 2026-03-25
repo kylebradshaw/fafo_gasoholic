@@ -267,18 +267,20 @@ test.describe('Happy path @smoke', () => {
     await api.post('/api/autos', {
       data: { brand: 'Selector', model: 'Test', plate: 'SEL001', odometer: 1000 },
     });
-    await cleanupUser(api, selectorEmail);
-    await api.dispose();
 
     await context.addCookies(state.cookies);
     await page.goto('/app.html');
 
-    // Selector must not show the placeholder — it must have a real auto selected
-    const selectedValue = await page.locator('#autoSelector').inputValue();
-    expect(selectedValue, 'auto selector should not be empty when autos exist').not.toBe('');
+    // Selector must not show the placeholder — it must have a real auto selected.
+    // Use the retrying expect so we wait for loadAutos() to complete before asserting.
+    await expect(page.locator('#autoSelector'), 'auto selector should not be empty when autos exist').not.toHaveValue('');
 
     // The log panel must not show the "select an auto" hint
     await expect(page.locator('#fillupContent')).not.toHaveText(/Select an auto/i);
+
+    // Clean up after assertions
+    await cleanupUser(api, selectorEmail);
+    await api.dispose();
   });
 
   test('logout clears session', { tag: ['@smoke'] }, async ({ request }) => {
