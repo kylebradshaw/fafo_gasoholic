@@ -18,7 +18,31 @@
       --accent-hover: #d86500;
       --danger: #dc2626;
       --danger-hover: #b91c1c;
+      --skeleton-bg: #e0e0e0;
+      --skeleton-shine: #f0f0f0;
+      --row-hover: #fafafa;
+      --error-bg: #fef2f2;
+      --error-border: #fecaca;
     }
+
+    [data-theme="dark"] {
+      --bg: #111;
+      --surface: #1c1c1c;
+      --border: #2e2e2e;
+      --text: #e8e8e8;
+      --muted: #777;
+      --accent: #f07820;
+      --accent-hover: #e06a10;
+      --danger: #f87171;
+      --danger-hover: #ef4444;
+      --skeleton-bg: #272727;
+      --skeleton-shine: #333;
+      --row-hover: #242424;
+      --error-bg: #3b1212;
+      --error-border: #7f2020;
+    }
+
+    [data-theme="dark"] body { text-shadow: none; }
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -54,6 +78,8 @@
       border-radius: 5px;
       font-size: 0.9rem;
       max-width: 200px;
+      background: var(--surface);
+      color: var(--text);
     }
 
     nav button {
@@ -61,6 +87,7 @@
       border: 1px solid var(--border);
       border-radius: 5px;
       background: var(--surface);
+      color: var(--text);
       font-size: 0.875rem;
       cursor: pointer;
     }
@@ -139,7 +166,7 @@
       cursor: pointer;
     }
 
-    .btn-danger:hover { background: #fef2f2; }
+    .btn-danger:hover { background: var(--error-bg); }
 
     .btn-secondary {
       padding: 0.3rem 0.6rem;
@@ -197,8 +224,8 @@
     }
 
     .skeleton {
-      background: #e0e0e0;
-      background-image: linear-gradient(90deg, #e0e0e0 0px, #f0f0f0 40px, #e0e0e0 80px);
+      background: var(--skeleton-bg);
+      background-image: linear-gradient(90deg, var(--skeleton-bg) 0px, var(--skeleton-shine) 40px, var(--skeleton-bg) 80px);
       background-size: 200px 100%;
       animation: shimmer 1.2s ease-in-out infinite;
       border-radius: 4px;
@@ -297,6 +324,8 @@
       border: 1px solid var(--border);
       border-radius: 5px;
       font-size: 0.95rem;
+      background: var(--surface);
+      color: var(--text);
     }
 
     .form-group input:focus,
@@ -313,8 +342,8 @@
     }
 
     .error-banner {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
       color: var(--danger);
       border-radius: 5px;
       padding: 0.5rem 0.75rem;
@@ -393,11 +422,34 @@
     }
 
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fafafa; }
+    tr:hover td { background: var(--row-hover); }
 
     td.actions-cell {
       display: flex;
       gap: 0.4rem;
+    }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      margin-left: auto;
+      padding: 0.25rem 0.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .theme-toggle:hover { color: var(--text); }
+
+    /* ── Pump watermark: invert on dark so it reads as a light silhouette ── */
+    [data-theme="dark"] #pumpWatermark {
+      filter: invert(1);
+      mix-blend-mode: screen;
+      opacity: 0.04;
     }
   </style>
 </head>
@@ -414,6 +466,7 @@
 <div class="tabs">
   <button class="tab-btn active" data-tab="log">Log</button>
   <button class="tab-btn" data-tab="autos">Autos</button>
+  <button class="theme-toggle" id="themeToggle" title="Switch to dark mode">&#9789;</button>
 </div>
 
 <main>
@@ -529,6 +582,15 @@
 <script>
 'use strict';
 
+// ── Theme ──────────────────────────────────────────────────────────────────
+(function () {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === 'dark' || (!saved && prefersDark)) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
 // ── State ──────────────────────────────────────────────────────────────────
 let autos = [];
 let currentAutoId = null;
@@ -553,6 +615,26 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
   window.location.replace('/');
 });
+
+// ── Theme toggle ───────────────────────────────────────────────────────────
+function syncThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  btn.innerHTML = dark ? '&#9728;' : '&#9789;';
+  btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+}
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (dark) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+  }
+  syncThemeToggle();
+});
+syncThemeToggle();
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -956,6 +1038,6 @@ showAutoGridSkeleton();
 showFillupSkeleton();
 Promise.all([authCheck, loadAutos()]);
 </script>
-<img src="assets/images/pump.webp" alt="" aria-hidden="true" style="position:fixed;bottom:0;left:0;width:180px;opacity:0.07;mix-blend-mode:multiply;pointer-events:none;user-select:none;z-index:0;">
+<img id="pumpWatermark" src="assets/images/pump.webp" alt="" aria-hidden="true" style="position:fixed;bottom:0;left:0;width:180px;opacity:0.07;mix-blend-mode:multiply;pointer-events:none;user-select:none;z-index:0;">
 </body>
 </html>
