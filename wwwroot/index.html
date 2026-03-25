@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Gasoholic — Welcome!</title>
+  <title>Gasoholic - Fillup Tracker</title>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -13,7 +13,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Gasoholic">
   <link rel="apple-touch-icon" href="assets/icons/icon512_rounded.png">
-
   <link rel="stylesheet" href="assets/fonts/fonts.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,6 +37,7 @@
       padding: 2rem;
       width: 100%;
       max-width: 360px;
+      margin-top: -5rem;
     }
 
     h1 {
@@ -73,13 +73,13 @@
       transition: border-color 0.15s;
     }
 
-    input[type="email"]:focus { border-color: #2563eb; }
+    input[type="email"]:focus { border-color: #ec7004; }
 
     button[type="submit"] {
       margin-top: 1rem;
       width: 100%;
       padding: 0.6rem;
-      background: #2563eb;
+      background: #ec7004;
       color: #fff;
       border: none;
       border-radius: 5px;
@@ -89,8 +89,8 @@
       transition: background 0.15s;
     }
 
-    button[type="submit"]:hover { background: #1d4ed8; }
-    button[type="submit"]:disabled { background: #93c5fd; cursor: default; }
+    button[type="submit"]:hover { background: #d86500; }
+    button[type="submit"]:disabled { background: #ffe4cd; cursor: default; }
 
     .error {
       margin-top: 0.75rem;
@@ -156,12 +156,6 @@
   </style>
 </head>
 <body>
-    <br>
-    <br>
-    <br>
-    <img width="800" src="images/restored-alpha.png" />
-    <br>
-    <br>
   <div class="card">
     <h1>GASOHOLIC</h1>
 

@@ -94,6 +94,21 @@
 
     nav button:hover { background: var(--bg); }
 
+    [data-theme="dark"] nav select {
+      background: #252525;
+      border-color: #4a4a4a;
+    }
+
+    [data-theme="dark"] nav button {
+      background: #252525;
+      border-color: #4a4a4a;
+    }
+
+    [data-theme="dark"] nav button:hover {
+      background: #2e2e2e;
+      border-color: #666;
+    }
+
     /* ── Tabs ── */
     .tabs {
       display: flex;
@@ -175,9 +190,20 @@
       border-radius: 5px;
       font-size: 0.8rem;
       cursor: pointer;
+      color: var(--text);
     }
 
     .btn-secondary:hover { background: var(--bg); }
+
+    [data-theme="dark"] .btn-secondary {
+      border-color: #555;
+      color: #ccc;
+    }
+
+    [data-theme="dark"] .btn-secondary:hover {
+      background: #2a2a2a;
+      border-color: #777;
+    }
 
     /* ── Auto cards ── */
     .auto-grid {
