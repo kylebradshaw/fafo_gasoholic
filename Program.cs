@@ -96,3 +96,5 @@ app.MapFillupEndpoints();
 app.MapSmokeTestEndpoints();
 
 app.Run();
+
+public partial class Program { }
