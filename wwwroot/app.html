@@ -14,8 +14,8 @@
       --border: #e0e0e0;
       --text: #111;
       --muted: #666;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
+      --accent: #ec7004;
+      --accent-hover: #d86500;
       --danger: #dc2626;
       --danger-hover: #b91c1c;
     }
@@ -25,6 +25,7 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100dvh;
+      text-shadow: oklch(0.18 0 0 / 0.3) 0.5px 0.5px 1px;
     }
 
     /* ── Nav ── */
@@ -41,7 +42,7 @@
     nav .brand {
       font-family: 'Contrail One', system-ui, sans-serif;
       font-weight: 400;
-      font-size: 1.1rem;
+      font-size: 2.1rem;
       color: var(--accent);
       margin-right: auto;
       letter-spacing: 0.05em;
@@ -955,5 +956,6 @@ showAutoGridSkeleton();
 showFillupSkeleton();
 Promise.all([authCheck, loadAutos()]);
 </script>
+<img src="assets/images/pump.webp" alt="" aria-hidden="true" style="position:fixed;bottom:0;left:0;width:180px;opacity:0.07;mix-blend-mode:multiply;pointer-events:none;user-select:none;z-index:0;">
 </body>
 </html>
