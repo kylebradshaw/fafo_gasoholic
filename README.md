@@ -2,6 +2,8 @@
 
 A local fuel fillup tracker. Track MPG across multiple vehicles.
 
+Source code powering https://gas.sdir.cc
+
 **Stack:** .NET 10 Minimal API · EF Core · SQLite · Vanilla HTML/JS
 
 ## Prerequisites
