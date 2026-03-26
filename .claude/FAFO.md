@@ -86,3 +86,18 @@ This file is appended with every user interaction in each Claude Code session.
 - **`Endpoints/SmokeTestEndpoints.cs`** — Added `DELETE /auth/dev-cleanup` endpoint: gated by `X-Smoke-Test-Secret`, validates email matches `@example.com` or `@test.com`, deletes user (cascade handles autos/fillups/tokens), returns 204/404/400/403 as appropriate.
 - **`e2e/helpers/auth.ts`** — Added `cleanupUser(api, email)` helper; silently succeeds on 404 (idempotent).
 - **`e2e/smoke/happy-path.spec.ts`** — Added `afterAll` that calls `cleanupUser` for the test email; fixed `selector-smoke` test to clean up its own unique email inline; added 3 regression tests: reject non-test domain (400), reject wrong secret (403), verify delete+second-delete returns 404.
+
+## Session: 2026-03-26
+
+- User requested comprehensive TECH STACK section in README.md for GitHub visibility
+- Analysis of project components completed:
+  - Backend: .NET 10.0.102, ASP.NET Core Minimal API, EF Core 10.0.4/10.0.5, SQLite/SQL Server dual support, Azure Communication Email 1.0.1
+  - Frontend: Vanilla HTML/CSS/JS, PWA support, responsive mobile-first design
+  - Testing: Playwright 1.52.0 E2E tests, 67 C# integration test cases
+  - Infrastructure: Docker, Azure Key Vault, session-based auth, CORS, Forwarded Headers
+- **README.md updated** with new "## Tech Stack" section containing 5 organized tables:
+  1. Backend technologies with versions & purposes
+  2. Frontend approach & capabilities
+  3. Testing & QA tools
+  4. Infrastructure & DevOps components
+  5. Architecture patterns highlighting Minimal APIs, DI, migrations, background services
