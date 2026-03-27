@@ -36,7 +36,7 @@ test.describe('Fillup log tab', () => {
 
   async function gotoWithAuto(page: import('@playwright/test').Page, context: import('@playwright/test').BrowserContext) {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.selectOption('#autoSelector', String(autoId));
   }
 
@@ -49,7 +49,7 @@ test.describe('Fillup log tab', () => {
 
   test('switching auto selector reloads table', async ({ page, context }) => {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.selectOption('#autoSelector', String(autoId));
     await expect(page.locator('tbody tr')).toHaveCount(3);
     await page.selectOption('#autoSelector', '');

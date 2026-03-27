@@ -19,7 +19,7 @@ test.describe('Add/edit fillup modal', () => {
 
   async function gotoWithAuto(page: import('@playwright/test').Page, context: import('@playwright/test').BrowserContext) {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.selectOption('#autoSelector', String(autoId));
   }
 

@@ -269,7 +269,7 @@ test.describe('Happy path @smoke', () => {
     });
 
     await context.addCookies(state.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/log');
 
     // Selector must not show the placeholder — it must have a real auto selected.
     // Use the retrying expect so we wait for loadAutos() to complete before asserting.

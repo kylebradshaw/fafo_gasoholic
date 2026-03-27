@@ -34,7 +34,8 @@
       "Bash(BASE_URL=https://gas.sdir.cc SMOKE_TEST_SECRET=b6f4f4c9324b23343361d7494365db93 npm run test:smoke 2>&1)",
       "WebFetch(domain:registry.npmjs.org)",
       "Bash(sudo chown:*)",
-      "Bash(npx skills:*)"
+      "Bash(npx skills:*)",
+      "Skill(ralph-loop:ralph-loop)"
     ]
   },
   "sandbox": {

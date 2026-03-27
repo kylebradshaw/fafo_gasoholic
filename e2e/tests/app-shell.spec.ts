@@ -12,16 +12,16 @@ test.describe('App shell & autos management', () => {
     await api.dispose();
   });
 
-  test('unauthenticated visit to /app.html redirects to login', async ({ page }) => {
+  test('unauthenticated visit to /app/log redirects to login', async ({ page }) => {
     await page.context().clearCookies();
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.waitForURL('**/');
     expect(page.url()).toMatch(/\/$/);
   });
 
   test('add auto appears in list and selector', async ({ page, context }) => {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/autos');
     await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Honda');
@@ -35,7 +35,7 @@ test.describe('App shell & autos management', () => {
 
   test('edit auto updates the card', async ({ page, context }) => {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/autos');
     await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Ford');
@@ -58,7 +58,7 @@ test.describe('App shell & autos management', () => {
 
   test('delete auto removes it from list and selector', async ({ page, context }) => {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/autos');
     await page.click('.tab-btn[data-tab="autos"]');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Chevy');
@@ -77,7 +77,7 @@ test.describe('App shell & autos management', () => {
 
   test('logout clears session and redirects to login', async ({ page, context }) => {
     await context.addCookies(cookieState.cookies);
-    await page.goto('/app.html');
+    await page.goto('/app/autos');
     await page.click('#logoutBtn');
     await page.waitForURL('**/');
     expect(page.url()).toMatch(/\/$/);

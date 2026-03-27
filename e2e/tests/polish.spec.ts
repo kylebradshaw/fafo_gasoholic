@@ -28,7 +28,7 @@ test.describe('Polish & responsive design', () => {
     await api.dispose();
     await context.addCookies(state.cookies);
 
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.click('text=Autos');
     await page.click('#addAutoBtn');
     await page.fill('#autoBrand', 'Honda');
@@ -114,7 +114,7 @@ test.describe('Polish & responsive design', () => {
     await page.route('**/api/autos', route => route.fulfill({ status: 500, body: 'error' }));
     let dialogShown = false;
     page.on('dialog', () => { dialogShown = true; });
-    await page.goto('/app.html');
+    await page.goto('/app/log');
     await page.waitForTimeout(500);
     expect(dialogShown).toBe(false);
   });

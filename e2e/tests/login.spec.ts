@@ -5,7 +5,7 @@ const email = uniqueEmail('login');
 
 test.describe('Login page', () => {
 
-  test('sign in via magic link redirects to /app.html', async ({ page }) => {
+  test('sign in via magic link redirects to /app/log', async ({ page }) => {
     // Dev-login bypasses email flow and establishes a real session
     const api = await request.newContext({ baseURL: page.context().browser()!.contexts()[0].pages()[0]?.url() ?? process.env.BASE_URL ?? 'http://localhost:5100' });
     const state = await devLogin(api, email);
@@ -13,19 +13,19 @@ test.describe('Login page', () => {
     await page.context().addCookies(state.cookies);
 
     await page.goto('/');
-    await page.waitForURL('**/app.html');
-    expect(page.url()).toContain('/app.html');
+    await page.waitForURL('**/app/log');
+    expect(page.url()).toContain('/app/log');
   });
 
-  test('already logged in skips to /app.html', async ({ page, context }) => {
+  test('already logged in skips to /app/log', async ({ page, context }) => {
     const api = await request.newContext({ baseURL: process.env.BASE_URL ?? 'http://localhost:5100' });
     const state = await devLogin(api, email);
     await api.dispose();
     await context.addCookies(state.cookies);
 
     await page.goto('/');
-    await page.waitForURL('**/app.html');
-    expect(page.url()).toContain('/app.html');
+    await page.waitForURL('**/app/log');
+    expect(page.url()).toContain('/app/log');
   });
 
   test('form is usable on 375px mobile without horizontal scroll', async ({ page }) => {
