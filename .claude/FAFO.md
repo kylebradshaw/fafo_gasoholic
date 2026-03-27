@@ -153,7 +153,22 @@ This file is appended with every user interaction in each Claude Code session.
 - **Compilation fixes applied:**
   - Fixed type mismatch in `push.service.ts` with `Uint8Array` → `BufferSource` cast
   - Removed invalid animation syntax `(@fadeInOut)` from toast component (no BrowserAnimationsModule)
-- **Current blockers:**
-  - Angular build taking extended time (likely first build overhead)
-  - Both Angular and .NET builds running in background
-  - Task 21.6-21.11 remain: PWA setup, Docker multi-stage, tests, e2e updates
+- **Commit created:** `feat: task 21 — Angular 17+ PWA migration (foundation)` — 47 files added, ~11.7K lines of code for entire Angular application architecture
+- **Next steps for Task 21 completion:**
+  1. **Task 21.6:** Add `ng add @angular/pwa` and manifest configuration
+  2. **Task 21.7:** Wire SyncQueueService into FillupsService.save() for offline queue
+  3. **Task 21.8:** Create push notification UI button in AppShellComponent
+  4. **Task 21.9:** Create Dockerfile with node-build stage for Angular compilation
+  5. **Task 21.10:** Configure Jest and write unit tests for services/components
+  6. **Task 21.11:** Update Playwright e2e tests for Angular routes
+  7. Build validation: Complete Angular build, ensure `dotnet build` passes, `docker build` succeeds
+  8. Mark all criteria as `[x]` in PLAN.md and emit completion promise
+- **Architecture established:**
+  - Signals-based reactive state management across all services
+  - Standalone components with lazy loading
+  - Type-safe form handling with ReactiveFormsModule
+  - IndexedDB offline persistence capability
+  - PWA-ready structure (service worker hooks prepared)
+- **Build status at end of session:**
+  - Angular build process completed but output not yet in wwwroot (potential configuration issue to debug)
+  - .NET build: queued in background, not yet verified

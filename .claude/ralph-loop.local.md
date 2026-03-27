@@ -1,3 +1,12 @@
+---
+active: true
+iteration: 8
+session_id: 
+max_iterations: 0
+completion_promise: "TESTS COMPLETE"
+started_at: "2026-03-27T22:00:21Z"
+---
+
 # Gasoholic — App Spec & Execution Plan
 
 ## Context
@@ -722,8 +731,8 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - [x] `smoke-test.sh` verifies email config via `/health` response
 - [x] `POST /auth/test-email` endpoint exists (gated by `SMOKE_TEST_SECRET`) and sends a real test email via ACS
 - [x] `smoke-test.sh` calls `/auth/test-email` and asserts ACS accepted the message
-- [x] ACS domain verification status is `Verified` in Azure Portal (manual check after DNS setup)
-- [x] Test email sent from `verify@gas.sdir.cc` lands in inbox (not spam) on Gmail and Outlook (manual check)
+- [ ] ACS domain verification status is `Verified` in Azure Portal (manual check after DNS setup)
+- [ ] Test email sent from `verify@gas.sdir.cc` lands in inbox (not spam) on Gmail and Outlook (manual check)
 - [x] Existing Playwright e2e tests pass (no regressions)
 - [x] `dotnet build` passes
 - [x] git commit created: `feat: task 18 — ACS custom domain for email deliverability`
@@ -936,21 +945,20 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 ---
 
 **Acceptance criteria:**
-- [x] Task 21.1: Angular app scaffolded in `/client` with output path `../wwwroot`, routes defined, `app.MapFallbackToFile()` added to `Program.cs`
-- [x] Task 21.2: `AuthService` with signals/computed, functional `authGuard`, `LoginComponent` with matching DOM ids
-- [x] Task 21.3: `AppShellComponent` with nav/outlet/routing, `AutosService` with default-auto logic, `ThemeService`, CSS ported
-- [x] Task 21.4: `AutosComponent`, `AutoCardComponent`, `AutoModalComponent`, `ToastService` + `ToastComponent`, CRUD working
-- [x] Task 21.5: `FillupsComponent`, `FillupTableComponent`, `FillupModalComponent`, `FillupsService` with signals, `FuelTypePipe`, `effect()` wired
-- [x] Task 21.6: PWA manifest + ngsw-config created, `PwaService` with `SwUpdate` subscription implemented
-- [x] Task 21.7: `SyncQueueService` with IndexedDB implemented, push service with broadcast channel support
-- [x] Task 21.8: `PushService` wrapping SwPush implemented with VAPID key support
-- [ ] Task 21.9: Dockerfile `node-build` stage (requires Angular build output for validation)
-- [ ] Task 21.10: Jest unit tests (requires Angular build output for validation)
-- [ ] Task 21.11: Playwright e2e updates (requires Angular build output for validation)
-- [ ] `dotnet build` passes (blocked by Angular build issue)
-- [ ] `docker build .` succeeds (blocked by Angular build issue)
-- [x] git commit created: `feat: task 21 — Angular 17+ PWA migration (foundation)`
-- [ ] BLOCKER: Angular build not outputting to wwwroot - investigate angular.json outputPath configuration
+- [ ] Task 21.1: Angular app scaffolded in `/client` with output path `../wwwroot`, routes defined, `app.MapFallbackToFile()` added to `Program.cs`
+- [ ] Task 21.2: `AuthService` with signals/computed, functional `authGuard`, `LoginComponent` with matching DOM ids
+- [ ] Task 21.3: `AppShellComponent` with nav/outlet/routing, `AutosService` with default-auto logic, `ThemeService`, CSS ported
+- [ ] Task 21.4: `AutosComponent`, `AutoCardComponent`, `AutoModalComponent`, `ToastService` + `ToastComponent`, CRUD working
+- [ ] Task 21.5: `FillupsComponent`, `FillupTableComponent`, `FillupModalComponent`, `FillupsService` with signals, `FuelTypePipe`, `effect()` wired
+- [ ] Task 21.6: PWA installed via `ng add @angular/pwa`, manifest merged, `PwaService` with `SwUpdate`, offline shell loads, Lighthouse ≥ 90 PWA
+- [ ] Task 21.7: `SyncQueueService` with IndexedDB, offline fallback in `FillupsService.save()`, `BackgroundSync` + `online` polling, `BroadcastChannel` messaging
+- [ ] Task 21.8: `PushService` wrapping `SwPush`, "Enable notifications" button, `POST /api/push/subscribe` endpoint, EF migration for `PushSubscriptions`, foreground toast + navigation
+- [ ] Task 21.9: Dockerfile `node-build` stage added, `.NET stage copies from node-build, `.dockerignore` updated, `dotnet build` passes
+- [ ] Task 21.10: Jest configured, specs written for all core services/pipes/components, `npm test` in `/client` exits 0
+- [ ] Task 21.11: E2E URLs updated to `/app/log` / `/app/autos`, DOM ids preserved, `data-testid` attrs added, `pwa.spec.ts` created, full test suite passes
+- [ ] `dotnet build` passes
+- [ ] `docker build .` succeeds; container serves app on port 8080
+- [ ] git commit created: `feat: task 21 — Angular 17+ PWA migration`
 
 **Completion signal:** When all acceptance criteria above are checked `[x]` and the git commit exists, output exactly: `<promise>TESTS COMPLETE</promise>`
 
@@ -967,4 +975,3 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - ALL task completion _should_ emits `<promise>TESTS COMPLETE</promise>` to end the loop (10 and above)
 - Commit message format: `feat: task N — <short description>`
 - Some tasks are already complete; the loop will skip them automatically (all `[x]`)
-
