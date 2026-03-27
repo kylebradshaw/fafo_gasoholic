@@ -78,6 +78,7 @@ app.UseCors();
 app.UseSession();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
 app.MapGet("/health", (IVerificationEmailSender emailSender) => Results.Ok(new
 {

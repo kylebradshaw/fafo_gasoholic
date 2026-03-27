@@ -101,3 +101,59 @@ This file is appended with every user interaction in each Claude Code session.
   3. Testing & QA tools
   4. Infrastructure & DevOps components
   5. Architecture patterns highlighting Minimal APIs, DI, migrations, background services
+
+## Session: 2026-03-27
+
+- User invoked `/ralph-loop` with PLAN.md to continue task execution
+- **Task 18 verification:** User confirmed both manual criteria are verified (ACS domain verified in Azure Portal, test emails reaching inboxes) — marked criteria as `[x]` in PLAN.md
+- **Task 21 blocker identified:** npm cache has root-owned files preventing `ng new` Angular CLI scaffold. Error: `npm error syscall open ... errno EPERM`
+- **Attempted workarounds:**
+  - Tried `npm cache clean --force` — blocked by file permissions
+  - Checked for yarn — not available
+  - Attempted manual directory creation — insufficient without npm for full Angular project setup
+- **User decision:** Pause ralph loop; user will fix npm permissions externally and continue Task 21 in next session
+- **Current state:** Tasks 1-20 complete (all criteria `[x]`, all commits exist); Task 21 ready to begin once npm is fixed
+
+## Session: 2026-03-27 (Continued)
+
+- **npm fixed:** npm permissions issue resolved; ng CLI is responsive
+- **Task 21 Implementation Started:**
+  - Task 21.1: Angular scaffolding partially completed
+    - `client/angular.json`: Updated to remove SSR config, added `outputPath: "../wwwroot"`
+    - `Program.cs`: Added `app.MapFallbackToFile("index.html")` for SPA routing support
+    - `client/src/app/app.routes.ts`: Configured routes for `/login`, `/app/log`, `/app/autos`
+  - Task 21.2: Auth layer implemented
+    - `core/services/auth.service.ts`: AuthService with signals (`user`, `loading`, `isAuthenticated`), methods for `checkAuth()`, `login()`, `logout()`
+    - `core/guards/auth.guard.ts`: Functional `authGuard` protecting `/app/*` routes
+    - `features/login/login.component.ts`: LoginComponent with form UI matching vanilla `index.html` DOM ids for e2e compatibility
+  - Task 21.3: App shell completed
+    - `features/app-shell/app-shell.component.ts`: Navbar with theme toggle, logout; auto selector; tab navigation to `/app/log` and `/app/autos`
+    - `core/services/autos.service.ts`: AutosService with signals for autos list, current auto selection, CRUD operations
+    - `core/services/theme.service.ts`: Theme management with `data-theme` attribute and localStorage persistence
+  - Task 21.4: Autos feature implemented
+    - `features/autos/autos.component.ts`: List, add/edit modals with ReactiveFormsModule
+    - `features/autos/auto-modal/auto-modal.component.ts`: Modal component with form validation
+    - `core/services/toast.service.ts`: Toast notifications service
+    - `shared/components/toast.component.ts`: Toast UI component with animations
+  - Task 21.5: Fillups feature implemented
+    - `features/fillups/fillups.component.ts`: Fillup log display, table view with MPG column
+    - `features/fillups/fillup-modal/fillup-modal.component.ts`: Add/edit fillup modal with form
+    - `core/services/fillups.service.ts`: FillupsService with signals for fillups list
+    - `core/pipes/fuel-type.pipe.ts`: FuelTypePipe for enum rendering (0→Regular, etc.)
+  - Additional services:
+    - `core/services/sync-queue.service.ts`: IndexedDB-based offline sync queue for pending fillups
+    - `core/services/push.service.ts`: Push notification service wrapper around SwPush
+    - `environments/environment.ts` and `environment.prod.ts`: Environment config with VAPID placeholder
+  - Global styling:
+    - `src/styles.scss`: CSS custom properties for light/dark theme, system fonts, transitions
+  - Build & Configuration:
+    - `app.config.ts`: Added `provideHttpClient()`, `APP_INITIALIZER` for non-blocking auth check
+    - Angular build running (long build time, ~5+ minutes)
+    - .NET build queued
+- **Compilation fixes applied:**
+  - Fixed type mismatch in `push.service.ts` with `Uint8Array` → `BufferSource` cast
+  - Removed invalid animation syntax `(@fadeInOut)` from toast component (no BrowserAnimationsModule)
+- **Current blockers:**
+  - Angular build taking extended time (likely first build overhead)
+  - Both Angular and .NET builds running in background
+  - Task 21.6-21.11 remain: PWA setup, Docker multi-stage, tests, e2e updates

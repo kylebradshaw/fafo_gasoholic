@@ -1,0 +1,59 @@
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
+export interface User {
+  email: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private http = inject(HttpClient);
+
+  private userSignal = signal<User | null>(null);
+  private loadingSignal = signal(false);
+
+  user = this.userSignal.asReadonly();
+  loading = this.loadingSignal.asReadonly();
+  isAuthenticated = computed(() => this.userSignal() !== null);
+
+  async checkAuth(): Promise<void> {
+    this.loadingSignal.set(true);
+    try {
+      const response = await firstValueFrom(
+        this.http.get<User>('/auth/me', { withCredentials: true })
+      );
+      this.userSignal.set(response);
+    } catch {
+      this.userSignal.set(null);
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  async login(email: string): Promise<void> {
+    this.loadingSignal.set(true);
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ status: string; email: string }>('/auth/login', { email }, { withCredentials: true })
+      );
+      this.userSignal.set({ email: response.email });
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  async logout(): Promise<void> {
+    this.loadingSignal.set(true);
+    try {
+      await firstValueFrom(
+        this.http.post('/auth/logout', {}, { withCredentials: true })
+      );
+      this.userSignal.set(null);
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+}
