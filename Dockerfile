@@ -13,7 +13,7 @@ WORKDIR /src
 COPY gasoholic.csproj .
 RUN dotnet restore
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish gasoholic.csproj -c Release -o /app/publish
 
 FROM --platform=${TARGETPLATFORM} mcr.microsoft.com/dotnet/aspnet:10.0.5-noble AS runtime
 WORKDIR /app

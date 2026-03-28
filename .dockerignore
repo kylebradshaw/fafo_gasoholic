@@ -8,3 +8,8 @@ obj/
 test-results/
 infra/
 .github/
+client/node_modules/
+client/.angular/
+e2e/node_modules/
+Tests/
+tmp/

@@ -26,7 +26,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Build (verify)
-        run: dotnet build -c Release
+        run: dotnet build gasoholic.csproj -c Release
 
       # Required secret: AZURE_CREDENTIALS
       # How to create it:
