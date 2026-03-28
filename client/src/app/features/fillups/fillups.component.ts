@@ -14,31 +14,26 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
   template: `
     <div class="fillups-container">
       @if (autosService.autos().length === 0) {
-        <p class="empty-state">
-          <a routerLink="/app/autos">Create an Auto</a>
-        </p>
+        <p class="empty-state">Create an <a routerLink="/app/autos">Auto</a>.</p>
       } @else if (!autosService.currentAuto()) {
-        <p class="empty-state">
-          <a routerLink="/app/autos">Create an Auto</a>
-        </p>
+        <p class="empty-state">Create an <a routerLink="/app/autos">Auto</a>.</p>
       } @else {
         <div class="fillups-header">
-          <h2>{{ autosService.currentAuto()?.brand }} {{ autosService.currentAuto()?.model }} - Fillup Log</h2>
+          <h2>Fillup Log</h2>
           <button (click)="openAddModal()" class="btn-add">+ Add Fillup</button>
         </div>
 
         @if (fillupsService.fillups().length === 0) {
           <p class="empty-state">No fillups recorded yet. Add one to get started.</p>
         } @else {
-          <div class="fillups-table-container">
+          <div class="table-wrap">
             <table class="fillups-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Fuel Type</th>
-                  <th>Gallons</th>
-                  <th>Price/Gal</th>
-                  <th>Cost</th>
+                  <th>Date/Time</th>
+                  <th>Fuel</th>
+                  <th>$/gal</th>
+                  <th>Gal</th>
                   <th>Odometer</th>
                   <th>MPG</th>
                   <th></th>
@@ -49,14 +44,13 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
                   <tr>
                     <td>{{ fillup.filledAt | date:'short' }}</td>
                     <td>{{ fillup.fuelType | fuelType }}</td>
-                    <td>{{ fillup.gallons | number:'1.1-2' }}</td>
                     <td>\${{ fillup.pricePerGallon | number:'1.2-2' }}</td>
-                    <td>\${{ (fillup.gallons * fillup.pricePerGallon) | number:'1.2-2' }}</td>
+                    <td>{{ fillup.gallons | number:'1.1-2' }}</td>
                     <td>{{ fillup.odometer | number }}</td>
-                    <td>{{ fillup.mpg || 'N/A' }}</td>
-                    <td>
-                      <button (click)="openEditModal(fillup)" class="btn-action">edit</button>
-                      <button (click)="deleteFillup(fillup.id)" class="btn-action btn-danger">delete</button>
+                    <td>{{ fillup.mpg || '&mdash;' }}</td>
+                    <td class="actions-cell">
+                      <button (click)="openEditModal(fillup)" class="btn-secondary">Edit</button>
+                      <button (click)="deleteFillup(fillup.id)" class="btn-danger">Del</button>
                     </td>
                   </tr>
                 }
@@ -78,29 +72,31 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
   `,
   styles: [`
     .fillups-container {
-      padding: 1rem;
+      padding: 0;
     }
 
     .fillups-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .fillups-header h2 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
       color: var(--text-primary);
     }
 
     .btn-add {
-      padding: 0.6rem 1rem;
+      padding: 0.4rem 0.75rem;
       background: var(--primary-color);
       color: #fff;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      font-size: 0.875rem;
       font-weight: 500;
       transition: opacity 0.15s;
     }
@@ -127,67 +123,68 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
       opacity: 0.8;
     }
 
-    .fillups-table-container {
+    .table-wrap {
       overflow-x: auto;
-      background: var(--bg-card);
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      transition: background-color 0.3s;
     }
 
     .fillups-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    .fillups-table thead {
-      background: var(--bg-light);
-      border-bottom: 1px solid var(--border-color);
-      transition: background-color 0.3s;
     }
 
     .fillups-table th {
-      padding: 0.75rem;
+      padding: 0.5rem 0.75rem;
       text-align: left;
-      font-weight: 600;
-      color: var(--text-primary);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .fillups-table td {
-      padding: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
       border-bottom: 1px solid var(--border-color);
       color: var(--text-primary);
     }
 
     .fillups-table tbody tr:hover {
       background: var(--bg-light);
-      transition: background-color 0.15s;
     }
 
-    .btn-action {
-      padding: 0.4rem 0.75rem;
+    .actions-cell {
+      white-space: nowrap;
+    }
+
+    .btn-secondary {
+      padding: 0.3rem 0.6rem;
       background: transparent;
-      border: none;
-      color: var(--primary-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: opacity 0.15s, color 0.15s;
-      margin-right: 0.5rem;
-      text-decoration: underline;
+      font-size: 0.8rem;
+      margin-right: 0.25rem;
+      transition: background 0.15s, border-color 0.3s, color 0.3s;
     }
 
-    .btn-action:hover {
-      opacity: 0.8;
+    .btn-secondary:hover {
+      background: var(--bg-light);
     }
 
-    .btn-action.btn-danger {
+    .btn-danger {
+      padding: 0.3rem 0.6rem;
+      background: transparent;
       color: #dc2626;
+      border: 1px solid #dc2626;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.15s;
     }
 
-    .btn-action.btn-danger:hover {
-      opacity: 0.8;
+    .btn-danger:hover {
+      background: rgba(220, 38, 38, 0.08);
     }
 
     @media (max-width: 640px) {
@@ -201,13 +198,10 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
         width: 100%;
       }
 
-      .fillups-table {
-        font-size: 0.8rem;
-      }
-
       .fillups-table th,
       .fillups-table td {
-        padding: 0.5rem;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.75rem;
       }
     }
   `]

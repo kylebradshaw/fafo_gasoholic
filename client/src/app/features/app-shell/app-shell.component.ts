@@ -13,35 +13,29 @@ import { ToastService } from '../../core/services/toast.service';
   imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-container">
-      <!-- Top nav -->
+      <!-- Top nav: brand + auto selector + logout (matches production) -->
       <nav class="navbar">
-        <div class="nav-content">
-          <h1 class="nav-title">GASOHOLIC</h1>
-          <div class="nav-actions">
-            <button (click)="toggleTheme()" class="theme-btn" title="Toggle theme">
-              {{ themeService.theme() === 'light' ? '🌙' : '☀️' }}
-            </button>
-            <button (click)="logout()" class="logout-btn">Logout</button>
-          </div>
-        </div>
-      </nav>
-
-      <!-- Main content -->
-      <div class="main-content">
-        <!-- Auto selector -->
-        <div class="auto-selector-panel" *ngIf="autosService.autos().length > 0">
+        <span class="brand">GASOHOLIC</span>
+        @if (autosService.autos().length > 0) {
           <select id="autoSelector" [(ngModel)]="selectedAutoId" (change)="onAutoChange()">
-            <option value="">Select an auto</option>
+            <option value="">&mdash; select auto &mdash;</option>
             @for (auto of autosService.autos(); track auto.id) {
               <option [value]="auto.id">{{ auto.brand }} {{ auto.model }} ({{ auto.plate }})</option>
             }
           </select>
-        </div>
+        }
+        <button (click)="logout()" class="logout-btn">Log out</button>
+      </nav>
 
-        <!-- Tab navigation -->
+      <!-- Main content -->
+      <div class="main-content">
+        <!-- Tab navigation + theme toggle (matches production) -->
         <div class="tabs">
-          <a routerLink="/app/log" routerLinkActive="active" data-testid="tab-log">Fillup Log</a>
+          <a routerLink="/app/log" routerLinkActive="active" data-testid="tab-log">Log</a>
           <a routerLink="/app/autos" routerLinkActive="active" data-testid="tab-autos">Autos</a>
+          <button (click)="toggleTheme()" class="theme-toggle" title="Toggle theme">
+            {{ themeService.theme() === 'light' ? '☽' : '☀' }}
+          </button>
         </div>
 
         <!-- Router outlet for page content -->
@@ -66,44 +60,45 @@ import { ToastService } from '../../core/services/toast.service';
     .navbar {
       background: var(--bg-card);
       border-bottom: 1px solid var(--border-color);
-      padding: 1rem;
-    }
-
-    .nav-content {
+      padding: 0.6rem 1rem;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      max-width: 100%;
+      gap: 0.75rem;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
-    .nav-title {
+    .brand {
       font-family: 'Contrail One', system-ui, sans-serif;
-      font-size: 1.3rem;
+      font-size: 2.1rem;
       font-weight: 400;
-      color: var(--text-primary);
-      margin: 0;
-      font-weight: 400;
-      margin-right: auto;
+      color: var(--primary-color);
       letter-spacing: 0.05em;
+      display: block;
     }
 
-    .nav-actions {
-      display: flex;
-      gap: 0.5rem;
+    select {
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      font-size: 0.9rem;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s;
     }
 
-    .theme-btn, .logout-btn {
-      padding: 0.5rem 1rem;
+    .logout-btn {
+      margin-left: auto;
+      padding: 0.3rem 0.75rem;
       border: 1px solid var(--border-color);
       border-radius: 5px;
       background: var(--bg-card);
       color: var(--text-primary);
       cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.15s, color 0.15s;
+      font-size: 0.875rem;
+      transition: background 0.15s, color 0.15s, border-color 0.3s;
     }
 
-    .theme-btn:hover, .logout-btn:hover {
+    .logout-btn:hover {
       background: var(--bg-light);
     }
 
@@ -113,26 +108,11 @@ import { ToastService } from '../../core/services/toast.service';
       padding: 1rem;
     }
 
-    .auto-selector-panel {
-      margin-bottom: 1rem;
-    }
-
-    select {
-      width: 100%;
-      max-width: 300px;
-      padding: 0.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 5px;
-      font-size: 0.9rem;
-      background: var(--bg-card);
-      color: var(--text-primary);
-    }
-
     .tabs {
       display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
       border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+      transition: border-color 0.3s;
     }
 
     .tabs a {
@@ -140,6 +120,8 @@ import { ToastService } from '../../core/services/toast.service';
       text-decoration: none;
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
+      font-size: 0.9rem;
+      font-weight: 400;
       transition: color 0.15s, border-color 0.15s;
     }
 
@@ -150,6 +132,22 @@ import { ToastService } from '../../core/services/toast.service';
     .tabs a.active {
       color: var(--primary-color);
       border-bottom-color: var(--primary-color);
+      font-weight: 500;
+    }
+
+    .theme-toggle {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.75rem 0.5rem;
+      transition: color 0.15s;
+    }
+
+    .theme-toggle:hover {
+      color: var(--text-primary);
     }
 
     #fillupContent {
@@ -158,23 +156,25 @@ import { ToastService } from '../../core/services/toast.service';
 
     @media (max-width: 640px) {
       .navbar {
-        padding: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
       }
 
-      .nav-title {
-        font-size: 1.1rem;
+      .brand {
+        font-size: 1.6rem;
       }
 
       .main-content {
         padding: 0.75rem;
       }
 
-      .nav-actions {
-        gap: 0.25rem;
+      .logout-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
       }
 
-      .theme-btn, .logout-btn {
-        padding: 0.4rem 0.75rem;
+      select {
+        max-width: 160px;
         font-size: 0.8rem;
       }
     }

@@ -11,24 +11,23 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
   template: `
     <div class="autos-container">
       <div class="autos-header">
-        <h2>My Vehicles</h2>
-        <button (click)="openAddModal()" class="btn-add">+ Add Vehicle</button>
+        <h2>My Autos</h2>
+        <button (click)="openAddModal()" class="btn-add">+ Add Auto</button>
       </div>
 
       @if (autosService.autos().length === 0) {
-        <p class="empty-state">No vehicles yet. Add one to get started.</p>
+        <p class="empty-state">No autos yet. Add one to get started.</p>
       } @else {
         <div class="autos-grid">
           @for (auto of autosService.autos(); track auto.id) {
             <div class="auto-card">
               <div class="auto-info">
                 <h3>{{ auto.brand }} {{ auto.model }}</h3>
-                <p class="plate">{{ auto.plate }}</p>
-                <p class="odometer">{{ auto.odometer | number }} mi</p>
+                <p class="meta">{{ auto.plate }} &middot; {{ auto.odometer | number }} mi</p>
               </div>
-              <div class="auto-actions">
-                <button (click)="openEditModal(auto)" class="btn-action">edit</button>
-                <button (click)="deleteAuto(auto.id)" class="btn-action btn-danger">delete</button>
+              <div class="actions">
+                <button (click)="openEditModal(auto)" class="btn-secondary">Edit</button>
+                <button (click)="deleteAuto(auto.id)" class="btn-danger">Delete</button>
               </div>
             </div>
           }
@@ -46,29 +45,31 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
   `,
   styles: [`
     .autos-container {
-      padding: 1rem;
+      padding: 0;
     }
 
     .autos-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .autos-header h2 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
       color: var(--text-primary);
     }
 
     .btn-add {
-      padding: 0.6rem 1rem;
+      padding: 0.4rem 0.75rem;
       background: var(--primary-color);
       color: #fff;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      font-size: 0.875rem;
       font-weight: 500;
       transition: opacity 0.15s;
     }
@@ -107,51 +108,49 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
 
     .auto-info h3 {
       margin: 0 0 0.25rem 0;
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: var(--text-primary);
     }
 
-    .plate {
-      margin: 0.25rem 0;
-      font-size: 0.9rem;
+    .meta {
+      margin: 0;
+      font-size: 0.8rem;
       color: var(--text-secondary);
-      font-weight: 500;
     }
 
-    .odometer {
-      margin: 0.25rem 0 0 0;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      opacity: 0.7;
-    }
-
-    .auto-actions {
+    .actions {
       display: flex;
-      gap: 1rem;
+      gap: 0.5rem;
     }
 
-    .btn-action {
-      padding: 0.4rem 0.75rem;
+    .btn-secondary {
+      padding: 0.3rem 0.6rem;
       background: transparent;
-      border: none;
-      color: var(--primary-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: opacity 0.15s, color 0.15s;
-      text-decoration: underline;
+      font-size: 0.8rem;
+      transition: background 0.15s, border-color 0.3s, color 0.3s;
     }
 
-    .btn-action:hover {
-      opacity: 0.8;
+    .btn-secondary:hover {
+      background: var(--bg-light);
     }
 
-    .btn-action.btn-danger {
+    .btn-danger {
+      padding: 0.3rem 0.6rem;
+      background: transparent;
       color: #dc2626;
+      border: 1px solid #dc2626;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.15s;
     }
 
-    .btn-action.btn-danger:hover {
-      opacity: 0.8;
+    .btn-danger:hover {
+      background: rgba(220, 38, 38, 0.08);
     }
 
     @media (max-width: 640px) {
@@ -200,24 +199,24 @@ export class AutosComponent {
     try {
       if (this.modalMode() === 'add') {
         await this.autosService.createAuto(data);
-        this.toastService.show('Vehicle added successfully', 'success');
+        this.toastService.show('Auto added successfully', 'success');
       } else {
         await this.autosService.updateAuto(this.selectedAuto().id, data);
-        this.toastService.show('Vehicle updated successfully', 'success');
+        this.toastService.show('Auto updated successfully', 'success');
       }
       this.closeModal();
     } catch (err) {
-      this.toastService.show('Failed to save vehicle', 'error');
+      this.toastService.show('Failed to save auto', 'error');
     }
   }
 
   async deleteAuto(id: number) {
-    if (confirm('Are you sure you want to delete this vehicle?')) {
+    if (confirm('Are you sure you want to delete this auto?')) {
       try {
         await this.autosService.deleteAuto(id);
-        this.toastService.show('Vehicle deleted successfully', 'success');
+        this.toastService.show('Auto deleted successfully', 'success');
       } catch (err) {
-        this.toastService.show('Failed to delete vehicle', 'error');
+        this.toastService.show('Failed to delete auto', 'error');
       }
     }
   }
