@@ -23,11 +23,11 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
               <label for="fuelType">Fuel Type</label>
               <select id="fuelType" formControlName="fuelType" required>
                 <option value="">Select fuel type</option>
-                <option value="0">Regular</option>
-                <option value="1">Mid-grade</option>
-                <option value="2">Premium</option>
-                <option value="3">Diesel</option>
-                <option value="4">E85</option>
+                <option value="Regular">Regular</option>
+                <option value="MidGrade">Mid-grade</option>
+                <option value="Premium">Premium</option>
+                <option value="Diesel">Diesel</option>
+                <option value="E85">E85</option>
               </select>
             </div>
             <div class="form-group">
@@ -237,7 +237,7 @@ export class FillupModalComponent {
         const filledAt = new Date(this.fillup.filledAt).toISOString().slice(0, 16);
         this.form.patchValue({
           filledAt,
-          fuelType: String(this.fillup.fuelType),
+          fuelType: this.fillup.fuelType,
           gallons: this.fillup.gallons,
           pricePerGallon: this.fillup.pricePerGallon,
           odometer: this.fillup.odometer,
@@ -245,14 +245,9 @@ export class FillupModalComponent {
         });
       } else if (this.mode === 'add') {
         const now = new Date().toISOString().slice(0, 16);
-        this.form.patchValue({
-          filledAt: now,
-          fuelType: '0',
-          isPartialFill: false
-        });
         this.form.reset({
           filledAt: now,
-          fuelType: '0',
+          fuelType: 'Regular',
           gallons: '',
           pricePerGallon: '',
           odometer: '',
@@ -271,7 +266,7 @@ export class FillupModalComponent {
       const value = this.form.value;
       this.save.emit({
         filledAt: new Date(value.filledAt).toISOString(),
-        fuelType: parseInt(value.fuelType, 10),
+        fuelType: value.fuelType,
         gallons: parseFloat(value.gallons),
         pricePerGallon: parseFloat(value.pricePerGallon),
         odometer: parseInt(value.odometer, 10),

@@ -35,7 +35,14 @@
       "WebFetch(domain:registry.npmjs.org)",
       "Bash(sudo chown:*)",
       "Bash(npx skills:*)",
-      "Skill(ralph-loop:ralph-loop)"
+      "Skill(ralph-loop:ralph-loop)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(npm install:*)",
+      "Bash(pkill -9 -f \"node.*ng\")",
+      "Bash(pkill -9 -f esbuild)",
+      "Bash(npm run:*)",
+      "Bash(pkill -9 -f \"ng build\")"
     ]
   },
   "sandbox": {

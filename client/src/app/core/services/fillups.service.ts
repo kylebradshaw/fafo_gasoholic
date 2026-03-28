@@ -6,7 +6,7 @@ export interface Fillup {
   id: number;
   autoId: number;
   filledAt: string;
-  fuelType: number;
+  fuelType: string | number;
   pricePerGallon: number;
   gallons: number;
   odometer: number;
@@ -39,21 +39,21 @@ export class FillupsService {
   }
 
   async createFillup(autoId: number, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
-    const created = await firstValueFrom(
-      this.http.post<Fillup>(`/api/autos/${autoId}/fillups`, fillup, { withCredentials: true })
+    const response = await firstValueFrom(
+      this.http.post<{ id: number }>(`/api/autos/${autoId}/fillups`, fillup, { withCredentials: true })
     );
-    this.fillupsSignal.update(fillups => [created, ...fillups]);
-    return created;
+    // Server only returns { id }, so reload to get complete data with server-calculated MPG
+    await this.loadFillups(autoId);
+    return { ...fillup, id: response.id, autoId } as Fillup;
   }
 
   async updateFillup(autoId: number, id: number, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
-    const updated = await firstValueFrom(
-      this.http.put<Fillup>(`/api/autos/${autoId}/fillups/${id}`, fillup, { withCredentials: true })
+    await firstValueFrom(
+      this.http.put<{ id: number }>(`/api/autos/${autoId}/fillups/${id}`, fillup, { withCredentials: true })
     );
-    this.fillupsSignal.update(fillups =>
-      fillups.map(f => f.id === id ? updated : f)
-    );
-    return updated;
+    // Server only returns { id }, so reload to get complete data with server-calculated MPG
+    await this.loadFillups(autoId);
+    return { ...fillup, id, autoId } as Fillup;
   }
 
   async deleteFillup(autoId: number, id: number): Promise<void> {

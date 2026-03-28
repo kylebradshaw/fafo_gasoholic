@@ -312,3 +312,20 @@ This file is appended with every user interaction in each Claude Code session.
   - Verify theme toggle functionality
   - Verify logout works (navigates to login page)
   - Source missing pump.webp asset from production
+
+## Session: 2026-03-27 (Fillup Data Bugs Fix)
+
+- **Bug 1: "Regular" fuel type renders as "Unknown"**
+  - Root cause: POST `/api/autos/{id}/fillups` only returns `{ id }`, not the full fillup object. `createFillup` in `fillups.service.ts` prepended this partial response to the signal, so `fuelType` was `undefined` → FuelTypePipe returned "Unknown".
+  - Fix: After POST, reload all fillups from server via `loadFillups(autoId)` to get complete data.
+
+- **Bug 2: Empty Date/Time, Gal, Odometer, MPG columns after insert**
+  - Root cause: Same as Bug 1 — POST response only has `{ id }`, so `filledAt`, `gallons`, `odometer`, `mpg` were all `undefined`.
+  - Fix: Same reload approach ensures all fields are populated from the GET endpoint.
+
+- **Same fix applied to `updateFillup`** — PUT endpoint also only returns `{ id }`.
+
+- **Files changed:**
+  - `client/src/app/core/services/fillups.service.ts`: `createFillup` and `updateFillup` now reload fillups from server after mutation instead of using partial response.
+
+- **Angular build:** Completed successfully, output to `wwwroot/browser/`.

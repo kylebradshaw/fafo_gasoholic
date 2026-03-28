@@ -1,0 +1,3 @@
+[     365ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://gas.sdir.cc/:0
+[     493ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://gas.sdir.cc/favicon.ico:0
+[     525ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://gas.sdir.cc/auth/me:0
