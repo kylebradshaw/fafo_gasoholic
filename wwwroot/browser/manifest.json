@@ -1,18 +1,19 @@
 {
-  "id": "https://gas.sdir.cc",
+  "id": "/",
   "name": "Gasoholic",
   "short_name": "Gasoholic",
   "description": "Track your fillups",
-  "start_url": "https://gas.sdir.cc",
-  "scope": "https://gas.sdir.cc/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "dir": "auto",
   "lang": "en-US",
-  "theme_color": "#f06c14",
-  "background_color": "#454545",
+  "theme_color": "#ec7004",
+  "background_color": "#f5f5f5",
   "icons": [
-    { "purpose": "maskable", "sizes": "512x512", "src": "assets/icons/icon512_maskable.png", "type": "image/png" },
-    { "purpose": "any",      "sizes": "512x512", "src": "assets/icons/icon512_rounded.png",  "type": "image/png" }
+    { "purpose": "any",      "sizes": "180x180", "src": "assets/icons/apple-touch-icon.png", "type": "image/png" },
+    { "purpose": "maskable", "sizes": "512x512", "src": "assets/icons/icon512_maskable.png",  "type": "image/png" },
+    { "purpose": "any",      "sizes": "512x512", "src": "assets/icons/icon512_rounded.png",   "type": "image/png" }
   ]
 }
