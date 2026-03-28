@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { AutosService } from '../../core/services/autos.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -57,12 +57,14 @@ import { ToastService } from '../../core/services/toast.service';
       flex-direction: column;
       height: 100dvh;
       width: 100dvw;
-      background: #f5f5f5;
+      background: var(--bg-light);
+      color: var(--text-primary);
+      transition: background-color 0.3s, color 0.3s;
     }
 
     .navbar {
-      background: #fff;
-      border-bottom: 1px solid #e0e0e0;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
       padding: 1rem;
     }
 
@@ -77,7 +79,7 @@ import { ToastService } from '../../core/services/toast.service';
       font-family: 'Contrail One', system-ui, sans-serif;
       font-size: 1.3rem;
       font-weight: 400;
-      color: #111;
+      color: var(--text-primary);
       margin: 0;
     }
 
@@ -88,16 +90,17 @@ import { ToastService } from '../../core/services/toast.service';
 
     .theme-btn, .logout-btn {
       padding: 0.5rem 1rem;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       border-radius: 5px;
-      background: #fff;
+      background: var(--bg-card);
+      color: var(--text-primary);
       cursor: pointer;
       font-size: 0.9rem;
-      transition: background 0.15s;
+      transition: background 0.15s, color 0.15s;
     }
 
     .theme-btn:hover, .logout-btn:hover {
-      background: #f0f0f0;
+      background: var(--bg-light);
     }
 
     .main-content {
@@ -114,33 +117,35 @@ import { ToastService } from '../../core/services/toast.service';
       width: 100%;
       max-width: 300px;
       padding: 0.5rem;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       border-radius: 5px;
       font-size: 0.9rem;
+      background: var(--bg-card);
+      color: var(--text-primary);
     }
 
     .tabs {
       display: flex;
       gap: 1rem;
       margin-bottom: 1.5rem;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .tabs a {
       padding: 0.75rem 1rem;
       text-decoration: none;
-      color: #666;
+      color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       transition: color 0.15s, border-color 0.15s;
     }
 
     .tabs a:hover {
-      color: #111;
+      color: var(--text-primary);
     }
 
     .tabs a.active {
-      color: #ec7004;
-      border-bottom-color: #ec7004;
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
     }
 
     #fillupContent {
@@ -176,6 +181,7 @@ export class AppShellComponent implements OnInit {
   autosService = inject(AutosService);
   themeService = inject(ThemeService);
   private toastService = inject(ToastService);
+  private router = inject(Router);
 
   selectedAutoId = signal<number | string>('');
 
@@ -200,7 +206,7 @@ export class AppShellComponent implements OnInit {
   async logout() {
     try {
       await this.authService.logout();
-      // Router will redirect to login due to authGuard
+      this.router.navigate(['/login']);
     } catch {
       this.toastService.show('Logout failed', 'error');
     }

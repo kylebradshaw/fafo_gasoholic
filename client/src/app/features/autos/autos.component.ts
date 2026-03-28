@@ -59,27 +59,28 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
     .autos-header h2 {
       margin: 0;
       font-size: 1.5rem;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .btn-add {
       padding: 0.6rem 1rem;
-      background: #ec7004;
+      background: var(--primary-color);
       color: #fff;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       font-weight: 500;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
     }
 
     .btn-add:hover {
-      background: #d86500;
+      opacity: 0.9;
+      filter: brightness(0.9);
     }
 
     .empty-state {
       text-align: center;
-      color: #666;
+      color: var(--text-secondary);
       padding: 2rem;
     }
 
@@ -90,13 +91,14 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
     }
 
     .auto-card {
-      background: #fff;
-      border: 1px solid #e0e0e0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 1rem;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     .auto-info {
@@ -106,20 +108,21 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
     .auto-info h3 {
       margin: 0 0 0.25rem 0;
       font-size: 1.1rem;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .plate {
       margin: 0.25rem 0;
       font-size: 0.9rem;
-      color: #666;
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
     .odometer {
       margin: 0.25rem 0 0 0;
       font-size: 0.85rem;
-      color: #999;
+      color: var(--text-secondary);
+      opacity: 0.7;
     }
 
     .auto-actions {
@@ -129,20 +132,20 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
 
     .btn-icon {
       padding: 0.4rem;
-      background: #f0f0f0;
-      border: 1px solid #ddd;
+      background: var(--bg-light);
+      border: 1px solid var(--border-color);
       border-radius: 5px;
       cursor: pointer;
       font-size: 1rem;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
     }
 
     .btn-icon:hover {
-      background: #e0e0e0;
+      opacity: 0.7;
     }
 
     .btn-icon.btn-danger:hover {
-      background: #ffcccc;
+      color: #cc3333;
     }
 
     @media (max-width: 640px) {

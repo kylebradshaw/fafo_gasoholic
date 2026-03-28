@@ -252,3 +252,30 @@ This file is appended with every user interaction in each Claude Code session.
   - PWA infrastructure in place (manifest, service worker hooks, offline caching structure)
   - E2E test suite updated for new routing and ready for CI/CD
   - Docker multi-stage build ready for containerized deployment
+
+## Session: 2026-03-27 (Theme Switching Bug Fix)
+
+- **Bug reported:** Theme toggle (light/dark mode) not working — clicking 🌙/☀️ button doesn't change colors
+- **Root cause identified:** All component styles used hardcoded colors (#fff, #111, #666, #e0e0e0, #ec7004, etc.) instead of CSS variables defined in `styles.scss`. ThemeService correctly toggles `data-theme="dark"` attribute, but components weren't respecting CSS variable changes.
+- **Fix applied:** Replaced all hardcoded colors with CSS variable equivalents across 5 component files:
+  - `app-shell.component.ts`: Already fixed in previous work (--bg-card, --text-primary, --text-secondary, --border-color, --primary-color)
+  - `fillup-modal.component.ts`: Converted modal, header, form labels, inputs, buttons to use CSS variables; added `transition: background-color 0.3s, color 0.3s` for smooth theme switching
+  - `fillups.component.ts`: Converted table header, table body, buttons, empty state to CSS variables
+  - `autos.component.ts`: Converted header, buttons, auto cards to CSS variables
+  - `auto-modal.component.ts`: Converted modal, form, buttons to CSS variables (mirrors fillup-modal changes)
+- **CSS variable mappings:**
+  - #fff (card backgrounds) → var(--bg-card)
+  - #f5f5f5/#f0f0f0 (light backgrounds) → var(--bg-light)
+  - #111/#333 (primary text) → var(--text-primary)
+  - #666 (secondary text) → var(--text-secondary)
+  - #ccc/#ddd/#e0e0e0 (borders) → var(--border-color)
+  - #ec7004 (primary color button) → var(--primary-color)
+  - Hover states: Used opacity/filter: brightness() for consistent behavior across light/dark modes
+  - Disabled states: Used opacity: 0.5 and cursor: not-allowed
+- **Angular build validated:**
+  - `npm run build` in `client/` completed successfully
+  - `wwwroot/browser/index.html` generated (1.2KB)
+  - All 5 component files now properly responsive to theme changes
+- **Git status:**
+  - 5 files modified: app-shell.component.ts, fillup-modal.component.ts, fillups.component.ts, autos.component.ts, auto-modal.component.ts
+  - Ready for test and commit: `feat: fix theme switching across all components`

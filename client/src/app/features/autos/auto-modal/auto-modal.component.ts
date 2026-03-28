@@ -55,11 +55,12 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
     }
 
     .modal {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       width: 90%;
       max-width: 500px;
+      transition: background-color 0.3s, color 0.3s;
     }
 
     .modal-header {
@@ -67,13 +68,13 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
       justify-content: space-between;
       align-items: center;
       padding: 1.5rem;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .modal-header h2 {
       margin: 0;
       font-size: 1.3rem;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .close-btn {
@@ -81,11 +82,12 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
       border: none;
       font-size: 1.5rem;
       cursor: pointer;
-      color: #666;
+      color: var(--text-secondary);
+      transition: color 0.15s;
     }
 
     .close-btn:hover {
-      color: #111;
+      color: var(--text-primary);
     }
 
     .modal-body {
@@ -100,22 +102,24 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
       display: block;
       font-size: 0.875rem;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 0.375rem;
     }
 
     input {
       width: 100%;
       padding: 0.5rem 0.75rem;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       border-radius: 5px;
       font-size: 1rem;
+      color: var(--text-primary);
+      background: var(--bg-card);
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background-color 0.15s, color 0.15s;
     }
 
     input:focus {
-      border-color: #ec7004;
+      border-color: var(--primary-color);
     }
 
     .form-actions {
@@ -132,30 +136,32 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
       font-size: 1rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
     }
 
     .btn-cancel {
-      background: #f0f0f0;
-      color: #111;
+      background: var(--bg-light);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
     }
 
     .btn-cancel:hover {
-      background: #e0e0e0;
+      opacity: 0.8;
     }
 
     .btn-save {
-      background: #ec7004;
+      background: var(--primary-color);
       color: #fff;
     }
 
     .btn-save:hover:not(:disabled) {
-      background: #d86500;
+      opacity: 0.9;
+      filter: brightness(0.9);
     }
 
     .btn-save:disabled {
-      background: #ffe4cd;
-      cursor: default;
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     @media (max-width: 640px) {

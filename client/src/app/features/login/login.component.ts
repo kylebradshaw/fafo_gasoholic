@@ -62,17 +62,19 @@ import { AuthService } from '../../core/services/auth.service';
       align-items: center;
       justify-content: center;
       padding: 1rem;
-      background: #f5f5f5;
+      background: var(--bg-light);
+      transition: background-color 0.3s;
     }
 
     .card {
-      background: #fff;
-      border: 1px solid #e0e0e0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 2rem;
       width: 100%;
       max-width: 360px;
       margin-top: -5rem;
+      transition: background-color 0.3s, border-color 0.3s;
     }
 
     h1 {
@@ -80,35 +82,40 @@ import { AuthService } from '../../core/services/auth.service';
       font-size: 1.4rem;
       font-weight: 400;
       margin-bottom: 0.25rem;
-      color: #111;
+      color: var(--text-primary);
       letter-spacing: 0.05em;
+      transition: color 0.3s;
     }
 
     .subtitle {
       font-size: 0.875rem;
-      color: #666;
+      color: var(--text-secondary);
       margin-bottom: 1.5rem;
+      transition: color 0.3s;
     }
 
     label {
       display: block;
       font-size: 0.875rem;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 0.375rem;
+      transition: color 0.3s;
     }
 
     input[type="email"] {
       width: 100%;
       padding: 0.5rem 0.75rem;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       border-radius: 5px;
       font-size: 1rem;
+      color: var(--text-primary);
+      background: var(--bg-card);
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background-color 0.3s, color 0.3s;
     }
 
-    input[type="email"]:focus { border-color: #ec7004; }
+    input[type="email"]:focus { border-color: var(--primary-color); }
 
     button[type="submit"],
     .btn-secondary {
@@ -116,20 +123,20 @@ import { AuthService } from '../../core/services/auth.service';
       font-size: 1rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
     }
 
     button[type="submit"] {
       margin-top: 1rem;
       width: 100%;
       padding: 0.6rem;
-      background: #ec7004;
+      background: var(--primary-color);
       color: #fff;
       border: none;
     }
 
-    button[type="submit"]:hover { background: #d86500; }
-    button[type="submit"]:disabled { background: #ffe4cd; cursor: default; }
+    button[type="submit"]:hover { opacity: 0.9; filter: brightness(0.9); }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: default; }
 
     .error {
       margin-top: 0.75rem;
@@ -145,14 +152,16 @@ import { AuthService } from '../../core/services/auth.service';
 
     .pending-email {
       font-weight: 600;
-      color: #111;
+      color: var(--text-primary);
+      transition: color 0.3s;
     }
 
     .pending-msg {
       font-size: 0.9rem;
-      color: #555;
+      color: var(--text-secondary);
       margin: 0.75rem 0 1.25rem;
       line-height: 1.5;
+      transition: color 0.3s;
     }
 
     .btn-secondary {
@@ -172,16 +181,18 @@ import { AuthService } from '../../core/services/auth.service';
       margin-top: 0.75rem;
       text-align: center;
       font-size: 0.85rem;
-      color: #6b7280;
+      color: var(--text-secondary);
       cursor: pointer;
       text-decoration: underline;
+      transition: color 0.3s;
     }
 
     .cooldown-msg {
       margin-top: 0.5rem;
       font-size: 0.8rem;
-      color: #6b7280;
+      color: var(--text-secondary);
       text-align: center;
+      transition: color 0.3s;
     }
 
     .pump-bg {

@@ -86,35 +86,37 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
     .fillups-header h2 {
       margin: 0;
       font-size: 1.5rem;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .btn-add {
       padding: 0.6rem 1rem;
-      background: #ec7004;
+      background: var(--primary-color);
       color: #fff;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       font-weight: 500;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
     }
 
     .btn-add:hover {
-      background: #d86500;
+      opacity: 0.9;
+      filter: brightness(0.9);
     }
 
     .empty-state {
       text-align: center;
-      color: #666;
+      color: var(--text-secondary);
       padding: 2rem;
     }
 
     .fillups-table-container {
       overflow-x: auto;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-color);
+      transition: background-color 0.3s;
     }
 
     .fillups-table {
@@ -124,43 +126,46 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
     }
 
     .fillups-table thead {
-      background: #f5f5f5;
-      border-bottom: 1px solid #e0e0e0;
+      background: var(--bg-light);
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color 0.3s;
     }
 
     .fillups-table th {
       padding: 0.75rem;
       text-align: left;
       font-weight: 600;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .fillups-table td {
       padding: 0.75rem;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
     }
 
     .fillups-table tbody tr:hover {
-      background: #fafafa;
+      background: var(--bg-light);
+      transition: background-color 0.15s;
     }
 
     .btn-icon {
       padding: 0.4rem;
-      background: #f0f0f0;
-      border: 1px solid #ddd;
+      background: var(--bg-light);
+      border: 1px solid var(--border-color);
       border-radius: 5px;
       cursor: pointer;
       font-size: 1rem;
-      transition: background 0.15s;
+      transition: opacity 0.15s;
       margin-right: 0.25rem;
     }
 
     .btn-icon:hover {
-      background: #e0e0e0;
+      opacity: 0.7;
     }
 
     .btn-icon.btn-danger:hover {
-      background: #ffcccc;
+      color: #cc3333;
     }
 
     @media (max-width: 640px) {
