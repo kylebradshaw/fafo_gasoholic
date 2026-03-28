@@ -1,5 +1,6 @@
 import { Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AutosService } from '../../core/services/autos.service';
 import { FillupsService, Fillup } from '../../core/services/fillups.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -9,13 +10,17 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
 @Component({
   selector: 'app-fillups',
   standalone: true,
-  imports: [CommonModule, FuelTypePipe, FillupModalComponent],
+  imports: [CommonModule, RouterLink, FuelTypePipe, FillupModalComponent],
   template: `
     <div class="fillups-container">
       @if (autosService.autos().length === 0) {
-        <p class="empty-state">Select an auto to view fillup history.</p>
+        <p class="empty-state">
+          <a routerLink="/app/autos">Create an Auto</a>
+        </p>
       } @else if (!autosService.currentAuto()) {
-        <p class="empty-state">Select an auto to view fillup history.</p>
+        <p class="empty-state">
+          <a routerLink="/app/autos">Create an Auto</a>
+        </p>
       } @else {
         <div class="fillups-header">
           <h2>{{ autosService.currentAuto()?.brand }} {{ autosService.currentAuto()?.model }} - Fillup Log</h2>
@@ -50,8 +55,8 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
                     <td>{{ fillup.odometer | number }}</td>
                     <td>{{ fillup.mpg || 'N/A' }}</td>
                     <td>
-                      <button (click)="openEditModal(fillup)" class="btn-icon" title="Edit">✏️</button>
-                      <button (click)="deleteFillup(fillup.id)" class="btn-icon btn-danger" title="Delete">🗑️</button>
+                      <button (click)="openEditModal(fillup)" class="btn-action">edit</button>
+                      <button (click)="deleteFillup(fillup.id)" class="btn-action btn-danger">delete</button>
                     </td>
                   </tr>
                 }
@@ -111,6 +116,17 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
       padding: 2rem;
     }
 
+    .empty-state a {
+      color: var(--primary-color);
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .empty-state a:hover {
+      opacity: 0.8;
+    }
+
     .fillups-table-container {
       overflow-x: auto;
       background: var(--bg-card);
@@ -149,23 +165,29 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
       transition: background-color 0.15s;
     }
 
-    .btn-icon {
-      padding: 0.4rem;
-      background: var(--bg-light);
-      border: 1px solid var(--border-color);
-      border-radius: 5px;
+    .btn-action {
+      padding: 0.4rem 0.75rem;
+      background: transparent;
+      border: none;
+      color: var(--primary-color);
       cursor: pointer;
-      font-size: 1rem;
-      transition: opacity 0.15s;
-      margin-right: 0.25rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: opacity 0.15s, color 0.15s;
+      margin-right: 0.5rem;
+      text-decoration: underline;
     }
 
-    .btn-icon:hover {
-      opacity: 0.7;
+    .btn-action:hover {
+      opacity: 0.8;
     }
 
-    .btn-icon.btn-danger:hover {
-      color: #cc3333;
+    .btn-action.btn-danger {
+      color: #dc2626;
+    }
+
+    .btn-action.btn-danger:hover {
+      opacity: 0.8;
     }
 
     @media (max-width: 640px) {

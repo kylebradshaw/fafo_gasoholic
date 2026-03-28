@@ -27,8 +27,8 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
                 <p class="odometer">{{ auto.odometer | number }} mi</p>
               </div>
               <div class="auto-actions">
-                <button (click)="openEditModal(auto)" class="btn-icon" title="Edit">✏️</button>
-                <button (click)="deleteAuto(auto.id)" class="btn-icon btn-danger" title="Delete">🗑️</button>
+                <button (click)="openEditModal(auto)" class="btn-action">edit</button>
+                <button (click)="deleteAuto(auto.id)" class="btn-action btn-danger">delete</button>
               </div>
             </div>
           }
@@ -127,25 +127,31 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
 
     .auto-actions {
       display: flex;
-      gap: 0.5rem;
+      gap: 1rem;
     }
 
-    .btn-icon {
-      padding: 0.4rem;
-      background: var(--bg-light);
-      border: 1px solid var(--border-color);
-      border-radius: 5px;
+    .btn-action {
+      padding: 0.4rem 0.75rem;
+      background: transparent;
+      border: none;
+      color: var(--primary-color);
       cursor: pointer;
-      font-size: 1rem;
-      transition: opacity 0.15s;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: opacity 0.15s, color 0.15s;
+      text-decoration: underline;
     }
 
-    .btn-icon:hover {
-      opacity: 0.7;
+    .btn-action:hover {
+      opacity: 0.8;
     }
 
-    .btn-icon.btn-danger:hover {
-      color: #cc3333;
+    .btn-action.btn-danger {
+      color: #dc2626;
+    }
+
+    .btn-action.btn-danger:hover {
+      opacity: 0.8;
     }
 
     @media (max-width: 640px) {
