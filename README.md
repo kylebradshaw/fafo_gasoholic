@@ -102,6 +102,12 @@ dotnet run
 
 The app starts on **`http://localhost:5082`**. Open it in your browser — the login page loads automatically.
 
+**⚠️ If you see a blank page or error:**
+- Verify Angular built correctly: check that `wwwroot/browser/index.html` exists
+- Hard refresh your browser: `Ctrl+Shift+R` (Chrome) or `Cmd+Shift+R` (Mac)
+- Check browser console (`F12` → **Console**) for errors
+- Wait 2–3 seconds for the page to load
+
 The SQLite database (`gasoholic.db`) is created on first run. No manual migrations needed.
 
 ### What happens

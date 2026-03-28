@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,9 +77,25 @@ fwdOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(fwdOptions);
 app.UseCors();
 app.UseSession();
-app.UseDefaultFiles();
-app.UseStaticFiles();
-app.MapFallbackToFile("index.html");
+
+// Serve Angular dist from wwwroot/browser/ (Angular 17+ output structure)
+app.UseDefaultFiles(new DefaultFilesOptions { DefaultFileNames = new[] { "index.html" } });
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "browser")
+    ),
+    RequestPath = ""
+});
+
+// SPA fallback: any route not matched by files/API routes gets index.html
+// This allows Angular Router to handle client-side routing
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "browser")
+    )
+});
 
 app.MapGet("/health", (IVerificationEmailSender emailSender) => Results.Ok(new
 {

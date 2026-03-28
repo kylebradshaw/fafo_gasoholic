@@ -44,6 +44,12 @@ info: Gasoholic.Program[0]
 
 Open **http://localhost:5082** in your browser. The login page loads automatically.
 
+**If you see a blank page or error:**
+- Wait 2–3 seconds for the app to fully load
+- Check browser console for errors: `F12` → **Console** tab
+- Verify Angular was built: check that `wwwroot/browser/index.html` exists
+- Hard refresh: `Ctrl+Shift+R` (Chrome) or `Cmd+Shift+R` (Mac)
+
 **Database:** `gasoholic.db` is created automatically on first run (SQLite).
 
 ---
