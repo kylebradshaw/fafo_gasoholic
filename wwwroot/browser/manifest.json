@@ -1,0 +1,18 @@
+{
+  "id": "https://gas.sdir.cc",
+  "name": "Gasoholic",
+  "short_name": "Gasoholic",
+  "description": "Track your fillups",
+  "start_url": "https://gas.sdir.cc",
+  "scope": "https://gas.sdir.cc/",
+  "display": "standalone",
+  "orientation": "any",
+  "dir": "auto",
+  "lang": "en-US",
+  "theme_color": "#f06c14",
+  "background_color": "#454545",
+  "icons": [
+    { "purpose": "maskable", "sizes": "512x512", "src": "assets/icons/icon512_maskable.png", "type": "image/png" },
+    { "purpose": "any",      "sizes": "512x512", "src": "assets/icons/icon512_rounded.png",  "type": "image/png" }
+  ]
+}

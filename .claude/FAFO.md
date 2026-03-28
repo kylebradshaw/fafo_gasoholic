@@ -279,3 +279,36 @@ This file is appended with every user interaction in each Claude Code session.
 - **Git status:**
   - 5 files modified: app-shell.component.ts, fillup-modal.component.ts, fillups.component.ts, autos.component.ts, auto-modal.component.ts
   - Ready for test and commit: `feat: fix theme switching across all components`
+
+## Session: 2026-03-27 (Login & Logout Fixes + Aesthetic Comparison)
+
+- **Bugs fixed:**
+  1. **Logout not working:** Logout button called `authService.logout()` but didn't navigate to login. Fixed by adding `Router` injection and explicit `this.router.navigate(['/login'])` after logout succeeds.
+  2. **Form submission on Enter:** Already working correctly — login form has `(ngSubmit)="onSubmit()"` and button is `type="submit"`, so Enter key naturally triggers form submission.
+  3. **Login component missing theme support:** Updated `login.component.ts` styles to use CSS variables for theme switching (background, text colors, border colors, primary button color).
+
+- **Assets directory created:**
+  - `client/public/assets/images/.gitkeep` — Angular build copies public/ → wwwroot/browser/
+  - Login component references `assets/images/pump.webp` (pump background image)
+  - Note: pump.webp is missing from repo — needs to be sourced from production (https://gas.sdir.cc) or created
+
+- **Fixes applied:**
+  - `app-shell.component.ts`: Added `Router` import and injection, updated logout method to navigate to /login
+  - `login.component.ts`: Converted all hardcoded colors to CSS variables (--bg-light, --bg-card, --text-primary, --text-secondary, --border-color, --primary-color); added smooth transitions for theme changes
+
+- **Angular build:**
+  - `npm run build` completed successfully with all fixes
+  - wwwroot/browser/ contains index.html, main bundle, lazy chunks, styles, and favicon
+
+- **Commit created:**
+  - `fix: theme switching, logout navigation, and form submission` (commit 65367c8)
+  - 8 files changed: 164 insertions(+), 99 deletions(-)
+  - Includes FAFO.md updates, all component fixes, and assets directory structure
+
+- **Next steps for aesthetic comparison:**
+  - Need to compare local site (localhost:4200) with production (https://gas.sdir.cc)
+  - Verify fonts match (Contrail One for title, system fonts for body)
+  - Verify colors match (light/dark mode palettes)
+  - Verify theme toggle functionality
+  - Verify logout works (navigates to login page)
+  - Source missing pump.webp asset from production

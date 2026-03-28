@@ -49,6 +49,7 @@ import { ToastService } from '../../core/services/toast.service';
           <router-outlet></router-outlet>
         </div>
       </div>
+      <img id="pumpWatermark" src="assets/images/pump.webp" alt="" aria-hidden="true" style="position:fixed;bottom:0;left:0;width:180px;opacity:0.07;mix-blend-mode:multiply;pointer-events:none;user-select:none;z-index:0;">
     </div>
   `,
   styles: [`
@@ -81,6 +82,9 @@ import { ToastService } from '../../core/services/toast.service';
       font-weight: 400;
       color: var(--text-primary);
       margin: 0;
+      font-weight: 400;
+      margin-right: auto;
+      letter-spacing: 0.05em;
     }
 
     .nav-actions {

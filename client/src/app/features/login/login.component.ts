@@ -22,6 +22,7 @@ import { AuthService } from '../../core/services/auth.service';
             name="email"
             placeholder="you@example.com"
             [(ngModel)]="email"
+            (keydown.enter)="onSubmit()"
             required
             autofocus
           >
