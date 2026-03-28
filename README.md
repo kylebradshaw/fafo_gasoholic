@@ -10,16 +10,16 @@ A Progressive Web App (PWA) for tracking vehicle fuel consumption and MPG across
 ## Quick Start
 
 ```bash
-# Build Angular frontend
-cd client && npm install && npm run build && cd ..
-
-# Start .NET backend (serves Angular app)
-dotnet run
-
-# Open http://localhost:5082
+./start.sh
 ```
 
-See [Running locally](#running-locally) below for detailed setup.
+This starts everything automatically:
+- Angular dev server on **http://localhost:4200** (with live reload)
+- .NET API on http://localhost:5082
+
+**Open http://localhost:4200** in your browser.
+
+See [Running locally](#running-locally) below for setup modes and options.
 
 ## Documentation
 
@@ -87,7 +87,21 @@ See [Running locally](#running-locally) below for detailed setup.
 
 ## Running locally
 
-### Quick start (one-time setup)
+### Quickest start — one command
+
+```bash
+./start.sh
+```
+
+This is the recommended way. It handles everything:
+- Installs Angular dependencies
+- Starts Angular dev server (http://localhost:4200, live reload)
+- Starts .NET API (http://localhost:5082)
+- Proxies `/api/` requests from Angular to .NET
+
+**Open http://localhost:4200** in your browser.
+
+### Manual setup (if preferred)
 
 ```bash
 # 1. Build the Angular frontend
@@ -117,27 +131,46 @@ The SQLite database (`gasoholic.db`) is created on first run. No manual migratio
 - Routes like `/app/log` and `/app/autos` are handled by Angular (SPA routing via fallback to `index.html`)
 - API routes like `/api/autos` are handled by .NET
 
-### Development workflow (faster rebuilds)
+### Development modes
 
-If you're actively developing, use two terminal windows:
-
-**Terminal 1 — Angular dev server (with live reload):**
+**Development (recommended for active development):**
 ```bash
-cd client
-npm start
-# Runs on http://localhost:4200
-# Auto-rebuilds on file changes
+./start.sh --dev
+# or just: ./start.sh
 ```
+- Angular dev server on http://localhost:4200 (live reload)
+- .NET API on http://localhost:5082
+- Changes rebuild **instantly**
 
-**Terminal 2 — .NET backend:**
+**Production-like (test production build):**
 ```bash
+./start.sh --prod
+```
+- Single process on http://localhost:5082
+- Serves from static files (like production)
+
+**Quick (just backend):**
+```bash
+./start.sh --quick
+```
+- Only .NET on http://localhost:5082
+- Assumes Angular already built
+
+**Manual two-terminal setup (if preferred):**
+```bash
+# Terminal 1
+cd client && npm start
+# Runs on http://localhost:4200, auto-rebuilds on changes
+
+# Terminal 2
 dotnet run
 # API on http://localhost:5082
 ```
 
-Then open `http://localhost:4200` in your browser. Angular dev server proxies `/api/` requests to the .NET backend.
-
-**Note:** The .NET dev server (Terminal 2) also serves the Angular app at `http://localhost:5082`, but with slower rebuild times. Use `localhost:4200` for faster iteration.
+For all options, see [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) or run:
+```bash
+./start.sh --help
+```
 
 ### Production-like local testing
 

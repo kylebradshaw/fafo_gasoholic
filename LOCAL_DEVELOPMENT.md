@@ -6,35 +6,30 @@ Copy-paste commands to get Gasoholic running on your machine for testing and dev
 
 ## First Time Setup (5 minutes)
 
-### Clone and install dependencies
+### Clone the repository
 
 ```bash
 git clone https://github.com/anthropics/gasoholic.git
 cd gasoholic
 
-# Install .NET 10 SDK if you don't have it
-# See https://dotnet.microsoft.com/download
-
-# Install Node.js 22+ if you don't have it
-# See https://nodejs.org/
-
-# Install Angular dependencies
-cd client
-npm install
-cd ..
+# Install prerequisites
+# - .NET 10 SDK: https://dotnet.microsoft.com/download
+# - Node.js 22+: https://nodejs.org/
 ```
 
-### Build Angular and start .NET
+### Start with one command
 
 ```bash
-# Build Angular frontend (outputs to ../wwwroot/browser/)
-cd client
-npm run build
-cd ..
-
-# Start .NET backend on http://localhost:5082
-dotnet run
+./start.sh
 ```
+
+This **automatically**:
+- Installs Angular dependencies
+- Starts Angular dev server on http://localhost:4200 (with live reload)
+- Starts .NET API on http://localhost:5082
+- Proxies `/api/` requests from Angular to .NET
+
+**Open http://localhost:4200** in your browser. Angular dev server will auto-reload when you save files.
 
 **Expected output:**
 ```
@@ -54,28 +49,74 @@ Open **http://localhost:5082** in your browser. The login page loads automatical
 
 ---
 
-## Development Workflow (faster rebuilds)
+## Different Startup Modes
 
-Use two terminal windows for faster iteration:
-
-### Terminal 1: Angular dev server (with live reload)
+### Development mode (recommended) — fastest iteration
 
 ```bash
-cd client
-npm start
+./start.sh
+# or explicitly:
+./start.sh --dev
 ```
 
-This starts the Angular dev server on **http://localhost:4200** with hot module replacement. Changes to components/styles rebuild instantly and refresh the browser.
+- **Angular dev server:** http://localhost:4200 (live reload)
+- **.NET API:** http://localhost:5082
+- **When to use:** Active development, making frequent changes
+- **Open:** http://localhost:4200 in browser
 
-### Terminal 2: .NET backend
+Changes to Angular files rebuild and refresh **instantly**. Backend changes require restarting (Ctrl+C and `./start.sh` again).
 
+### Production mode — test production build
+
+```bash
+./start.sh --prod
+```
+
+- **Builds Angular** to production bundle in `wwwroot/browser/`
+- **Starts .NET** serving static files on http://localhost:5082
+- **When to use:** Testing production setup, CI/CD verification
+- **Open:** http://localhost:5082 in browser
+
+Single process, single terminal. Tests the exact setup used in deployment.
+
+### Quick mode — minimal startup
+
+```bash
+./start.sh --quick
+```
+
+- **Just starts .NET** on http://localhost:5082
+- **When to use:** Angular already built, just testing backend changes
+- **Open:** http://localhost:5082 in browser
+
+Assumes `wwwroot/browser/index.html` already exists.
+
+### Manual two-terminal setup (if preferred)
+
+If you prefer explicit control over two processes:
+
+**Terminal 1:**
+```bash
+cd client && npm start
+# Angular dev server on http://localhost:4200
+```
+
+**Terminal 2:**
 ```bash
 dotnet run
+# .NET API on http://localhost:5082
 ```
 
-Starts the API on http://localhost:5082. Keep this running while developing.
+### Help and options
 
-**Open http://localhost:4200** in your browser. Angular dev server proxies `/api/` requests to the .NET backend automatically.
+```bash
+./start.sh --help
+# Shows all modes, options, and examples
+```
+
+Options:
+- `--skip-install` — Skip npm install if already done
+- `--help` — Show help message
 
 ---
 
