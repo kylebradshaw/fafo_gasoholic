@@ -23,7 +23,7 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
             <div class="auto-card">
               <div class="auto-info">
                 <h3>{{ auto.brand }} {{ auto.model }}</h3>
-                <p class="meta">{{ auto.plate }} &middot; {{ auto.odometer | number }} mi</p>
+                <p class="meta">{{ auto.plate }} &middot; {{ (auto.latestFillupOdometer ?? auto.odometer) | number }} mi</p>
               </div>
               <div class="actions">
                 <button (click)="openEditModal(auto)" class="btn-secondary">Edit</button>

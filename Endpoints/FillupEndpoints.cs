@@ -39,7 +39,7 @@ public static class FillupEndpoints
             var fillup = new Fillup
             {
                 AutoId = autoId,
-                FilledAt = req.FilledAt,
+                FilledAt = DateTime.SpecifyKind(req.FilledAt, DateTimeKind.Utc),
                 Location = req.Location,
                 Latitude = req.Latitude,
                 Longitude = req.Longitude,
@@ -69,7 +69,7 @@ public static class FillupEndpoints
             var fillup = await db.Fillups.FirstOrDefaultAsync(f => f.Id == id && f.AutoId == autoId);
             if (fillup is null) return Results.NotFound();
 
-            fillup.FilledAt = req.FilledAt;
+            fillup.FilledAt = DateTime.SpecifyKind(req.FilledAt, DateTimeKind.Utc);
             fillup.Location = req.Location;
             fillup.Latitude = req.Latitude;
             fillup.Longitude = req.Longitude;
@@ -114,34 +114,31 @@ public static class FillupEndpoints
             var current = fillups[i];
             double? mpg = null;
 
-            if (!current.IsPartialFill)
+            // Find the most recent prior full fill
+            int priorIdx = -1;
+            for (int j = i - 1; j >= 0; j--)
             {
-                // Find the most recent prior full fill
-                int priorIdx = -1;
-                for (int j = i - 1; j >= 0; j--)
+                if (!fillups[j].IsPartialFill)
                 {
-                    if (!fillups[j].IsPartialFill)
-                    {
-                        priorIdx = j;
-                        break;
-                    }
+                    priorIdx = j;
+                    break;
                 }
+            }
 
-                if (priorIdx >= 0)
-                {
-                    var prior = fillups[priorIdx];
-                    var ododelta = (double)(current.Odometer - prior.Odometer);
-                    // Sum gallons from priorIdx+1 through i (all fills between prior full fill and this one)
-                    var gallons = fillups.Skip(priorIdx + 1).Take(i - priorIdx)
-                        .Sum(f => (double)f.Gallons);
-                    if (gallons > 0 && ododelta > 0)
-                        mpg = ododelta / gallons;
-                }
+            if (priorIdx >= 0)
+            {
+                var prior = fillups[priorIdx];
+                var ododelta = (double)(current.Odometer - prior.Odometer);
+                // Sum gallons from priorIdx+1 through i (all fills between prior full fill and this one)
+                var gallons = fillups.Skip(priorIdx + 1).Take(i - priorIdx)
+                    .Sum(f => (double)f.Gallons);
+                if (gallons > 0 && ododelta > 0)
+                    mpg = ododelta / gallons;
             }
 
             yield return new FillupRow(
                 current.Id,
-                current.FilledAt,
+                DateTime.SpecifyKind(current.FilledAt, DateTimeKind.Utc),
                 current.Location,
                 current.Latitude,
                 current.Longitude,

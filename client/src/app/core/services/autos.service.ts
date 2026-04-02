@@ -8,6 +8,8 @@ export interface Auto {
   model: string;
   plate: string;
   odometer: number;
+  latestFillupOdometer?: number | null;
+  latestFillupAt?: string | null;
 }
 
 @Injectable({

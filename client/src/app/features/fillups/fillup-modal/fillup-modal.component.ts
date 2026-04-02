@@ -234,7 +234,7 @@ export class FillupModalComponent {
 
     effect(() => {
       if (this.fillup && this.mode === 'edit') {
-        const filledAt = new Date(this.fillup.filledAt).toISOString().slice(0, 16);
+        const filledAt = this.toLocalDatetimeValue(this.fillup.filledAt);
         this.form.patchValue({
           filledAt,
           fuelType: this.fillup.fuelType,
@@ -244,7 +244,7 @@ export class FillupModalComponent {
           isPartialFill: this.fillup.isPartialFill
         });
       } else if (this.mode === 'add') {
-        const now = new Date().toISOString().slice(0, 16);
+        const now = this.toLocalDatetimeValue(new Date().toISOString());
         this.form.reset({
           filledAt: now,
           fuelType: 'Regular',
@@ -255,6 +255,13 @@ export class FillupModalComponent {
         });
       }
     });
+  }
+
+  // Converts a UTC ISO string to the local-time value expected by datetime-local inputs
+  private toLocalDatetimeValue(utcString: string): string {
+    const d = new Date(utcString);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   onClose() {

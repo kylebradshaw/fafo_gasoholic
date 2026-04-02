@@ -18,7 +18,10 @@ public static class AutoEndpoints
                     a.Id, a.Brand, a.Model, a.Plate, a.Odometer,
                     LatestFillupAt = db.Fillups
                         .Where(f => f.AutoId == a.Id)
-                        .Max(f => (DateTime?)f.FilledAt)
+                        .Max(f => (DateTime?)f.FilledAt),
+                    LatestFillupOdometer = db.Fillups
+                        .Where(f => f.AutoId == a.Id)
+                        .Max(f => (decimal?)f.Odometer)
                 })
                 .ToListAsync();
 
