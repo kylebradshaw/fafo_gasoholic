@@ -42,7 +42,10 @@
       "Bash(pkill -9 -f \"node.*ng\")",
       "Bash(pkill -9 -f esbuild)",
       "Bash(npm run:*)",
-      "Bash(pkill -9 -f \"ng build\")"
+      "Bash(pkill -9 -f \"ng build\")",
+      "Bash(dotnet test:*)",
+      "Bash(npx playwright:*)",
+      "Bash(git commit -m ':*)"
     ]
   },
   "sandbox": {
