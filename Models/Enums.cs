@@ -6,3 +6,16 @@ public enum FuelType
     Diesel,
     E85
 }
+
+public enum MaintenanceType
+{
+    OilChange,
+    TireRotation,
+    BrakeInspection,
+    AirFilter,
+    CabinFilter,
+    WiperBlades,
+    TireReplacement,
+    BatteryReplacement,
+    Other
+}

@@ -329,3 +329,30 @@ This file is appended with every user interaction in each Claude Code session.
   - `client/src/app/core/services/fillups.service.ts`: `createFillup` and `updateFillup` now reload fillups from server after mutation instead of using partial response.
 
 - **Angular build:** Completed successfully, output to `wwwroot/browser/`.
+
+---
+
+## Session: 2026-04-05
+
+### Maintenance History Feature (all 3 phases)
+
+Implemented the full maintenance history feature per PRD `.claude/prd/maintenance-history.md`.
+
+**Phase 1 — Schema + Read Endpoint + Empty Tab**
+
+- `Models/Enums.cs`: Added `MaintenanceType` enum (9 values: OilChange, TireRotation, BrakeInspection, AirFilter, CabinFilter, WiperBlades, TireReplacement, BatteryReplacement, Other).
+- `Models/MaintenanceRecord.cs`: New entity (Id, AutoId, Type, PerformedAt, Odometer, Cost, Notes?).
+- `Models/Auto.cs`: Added `MaintenanceRecords` navigation collection.
+- `Data/AppDbContext.cs`: Added `MaintenanceRecords` DbSet; configured FK with cascade delete; `Type` stored as string via `HasConversion<string>()`.
+- `Data/AppDbContextFactory.cs`: Added `IDesignTimeDbContextFactory` — required because the EF tools timed out trying to start the full app host; factory provides a SQLite connection at design time.
+- `Migrations/20260405182804_AddMaintenanceRecords.cs`: Creates `MaintenanceRecords` table.
+- `Endpoints/MaintenanceEndpoints.cs`: New file — GET/POST/PUT/DELETE at `/api/autos/{autoId}/maintenance` and `/{id}`; same auth/ownership guard pattern as `FillupEndpoints`.
+- `Program.cs`: Registered `MapMaintenanceEndpoints()`.
+- `client/src/app/core/services/maintenance.service.ts`: New service — signals for `records` and `loading`, CRUD methods `loadRecords`, `createRecord`, `updateRecord`, `deleteRecord`.
+- `client/src/app/core/pipes/maintenance-type.pipe.ts`: New pipe — maps enum string names to display labels.
+- `client/src/app/features/maintenance/maintenance.component.ts`: New component — reactive table (effect on `currentAutoId`), empty state, "+ Add Record" button, Edit/Delete per row, delete with `confirm()`.
+- `client/src/app/features/maintenance/maintenance-modal/maintenance-modal.component.ts`: New shared add/edit modal — type dropdown, date input, odometer, cost (required), notes (optional textarea); pre-fills form in edit mode.
+- `client/src/app/features/app-shell/app-shell.component.ts`: Added "Maintenance" tab link to nav.
+- `client/src/app/app.routes.ts`: Added `/app/maintenance` lazy route.
+
+**Build status:** `dotnet build` — 0 errors. `tsc --noEmit` — 0 errors.

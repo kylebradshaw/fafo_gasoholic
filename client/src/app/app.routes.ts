@@ -19,6 +19,10 @@ export const routes: Routes = [
       {
         path: 'autos',
         loadComponent: () => import('./features/autos/autos.component').then(m => m.AutosComponent)
+      },
+      {
+        path: 'maintenance',
+        loadComponent: () => import('./features/maintenance/maintenance.component').then(m => m.MaintenanceComponent)
       }
     ]
   },

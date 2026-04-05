@@ -1,3 +1,4 @@
+import { Fillup } from './../../core/services/fillups.service';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -31,7 +32,8 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="main-content">
         <!-- Tab navigation + theme toggle (matches production) -->
         <div class="tabs">
-          <a routerLink="/app/log" routerLinkActive="active" data-testid="tab-log">Log</a>
+          <a routerLink="/app/log" routerLinkActive="active" data-testid="tab-log">Fillup Log</a>
+          <a routerLink="/app/maintenance" routerLinkActive="active" data-testid="tab-maintenance">Maintenance Log</a>
           <a routerLink="/app/autos" routerLinkActive="active" data-testid="tab-autos">Autos</a>
           <button (click)="toggleTheme()" class="theme-toggle" title="Toggle theme">
             {{ themeService.theme() === 'light' ? '☽' : '☀' }}

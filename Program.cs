@@ -114,6 +114,7 @@ app.MapGet("/health", (IVerificationEmailSender emailSender) => Results.Ok(new
 app.MapAuthEndpoints();
 app.MapAutoEndpoints();
 app.MapFillupEndpoints();
+app.MapMaintenanceEndpoints();
 app.MapSmokeTestEndpoints();
 
 app.Run();

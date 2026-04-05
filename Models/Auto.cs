@@ -8,4 +8,5 @@ public class Auto
     public string Plate { get; set; } = string.Empty;
     public decimal Odometer { get; set; }
     public ICollection<Fillup> Fillups { get; set; } = new List<Fillup>();
+    public ICollection<MaintenanceRecord> MaintenanceRecords { get; set; } = new List<MaintenanceRecord>();
 }
