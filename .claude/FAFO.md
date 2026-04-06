@@ -389,3 +389,17 @@ Implemented `.claude/plans/db-transition.md` in full.
 **Phase 5 — Cleanup**
 - `.claude/CLAUDE.md`: Updated project description from "SQLite (EF Core)" to "SQL Server (EF Core, Docker)".
 - Memory updated: `project_prod_environment.md` rewritten to reflect SQL Server everywhere.
+
+### Playwright E2E Tests for Maintenance Feature
+
+- Created `e2e/tests/maintenance.spec.ts` — 8 tests covering the maintenance log tab:
+  1. Empty state when no auto selected
+  2. Table renders seeded records (ordered by odometer desc)
+  3. Add maintenance record via modal (full form fill + POST)
+  4. Edit maintenance record via modal (cost update + PUT)
+  5. Delete maintenance record removes row (confirm dialog + DELETE)
+  6. Modal cancel closes without saving
+  7. Save button disabled with empty required fields
+  8. Switching auto reloads / deselects maintenance records
+  9. Table scrollable on mobile viewport (375px)
+- Pattern follows existing tests (fillup-log.spec.ts, fillup-modal.spec.ts): devLogin, seed via API, select auto, assert DOM
