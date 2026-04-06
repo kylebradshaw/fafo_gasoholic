@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build:
-#   Stage 1 (ng-build)  — Node 22, compiles Angular → /wwwroot
+#   Stage 1 (ng-build)  — Node 24, compiles Angular → /wwwroot
 #   Stage 2 (build)     — .NET 10 SDK, publishes the app
 #   Stage 3 (runtime)   — .NET 10 ASP.NET runtime image
 #
@@ -10,7 +10,7 @@ ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 
 # ── Stage 1: Angular build ────────────────────────────────────────────────────
-FROM --platform=${BUILDPLATFORM} node:22-slim AS ng-build
+FROM --platform=${BUILDPLATFORM} node:24-slim AS ng-build
 WORKDIR /client
 # Install deps first for layer-cache efficiency
 COPY client/package*.json ./
