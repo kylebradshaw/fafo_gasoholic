@@ -74,6 +74,22 @@ var fwdOptions = new ForwardedHeadersOptions
 fwdOptions.KnownIPNetworks.Clear();
 fwdOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(fwdOptions);
+
+// Log full exception details (inner exceptions) to stdout for diagnostics
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Unhandled exception on {context.Request.Method} {context.Request.Path}:");
+        Console.Error.WriteLine(ex.ToString());
+        throw;
+    }
+});
+
 app.UseCors();
 app.UseSession();
 
