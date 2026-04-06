@@ -4,33 +4,29 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dbProvider = (Environment.GetEnvironmentVariable("DATABASE_PROVIDER") ?? "sqlite").ToLower();
 var isProd = builder.Environment.IsProduction();
+
+var connStrBase = builder.Configuration.GetConnectionString("SqlServer")
+    ?? throw new InvalidOperationException("SqlServer connection string not configured.");
+// Local dev: SA_PASSWORD is in .env and appended here (connection string base has no password).
+// Production: full connection string (including password) is injected via Key Vault — SA_PASSWORD not needed.
+var saPassword = Environment.GetEnvironmentVariable("SA_PASSWORD");
+var connStr = saPassword != null ? $"{connStrBase}Password={saPassword};" : connStrBase;
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (dbProvider == "sqlserver")
-        options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
-    else
-        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlServer(connStr);
     // Suppress false-positive warning caused by EF tools/runtime version mismatch
     options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
-if (dbProvider == "sqlserver")
+builder.Services.AddDistributedSqlServerCache(options =>
 {
-    builder.Services.AddDistributedSqlServerCache(options =>
-    {
-        options.ConnectionString = builder.Configuration.GetConnectionString("SqlServer");
-        options.SchemaName = "dbo";
-        options.TableName = "SessionCache";
-        options.DefaultSlidingExpiration = TimeSpan.FromDays(30);
-    });
-}
-else
-{
-    builder.Services.AddDistributedMemoryCache();
-}
+    options.ConnectionString = connStr;
+    options.SchemaName = "dbo";
+    options.TableName = "SessionCache";
+    options.DefaultSlidingExpiration = TimeSpan.FromDays(30);
+});
 
 builder.Services.AddSession(options =>
 {

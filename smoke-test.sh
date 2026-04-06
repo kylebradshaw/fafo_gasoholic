@@ -186,6 +186,58 @@ else
   fail "MPG computed" "mpg not found in: $BODY"
 fi
 
+# ── Step 9b: Add maintenance record ────────────────────────────────────────
+
+echo "[9b] Add maintenance record"
+STATUS=$(req_status POST "/api/autos/$AUTO_ID/maintenance" \
+  -d "{\"type\":\"OilChange\",\"performedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"odometer\":10150,\"cost\":45.99,\"notes\":\"Smoke test oil change\"}")
+BODY=$(cat /tmp/smoke_body)
+assert_status "POST /api/autos/$AUTO_ID/maintenance" "201" "$STATUS" "$BODY"
+MAINT_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+if [ -z "$MAINT_ID" ]; then
+  fail "Extract maintenanceId" "could not parse id from: $BODY"
+else
+  ok "Extract maintenanceId=$MAINT_ID"
+fi
+
+# ── Step 9c: List maintenance records → record appears ─────────────────────
+
+echo "[9c] List maintenance records"
+STATUS=$(req_status GET "/api/autos/$AUTO_ID/maintenance")
+BODY=$(cat /tmp/smoke_body)
+assert_status "GET /api/autos/$AUTO_ID/maintenance" "200" "$STATUS" "$BODY"
+if echo "$BODY" | grep -q '"OilChange"'; then
+  ok "Maintenance record appears in list"
+else
+  fail "Maintenance record appears in list" "OilChange not found in: $BODY"
+fi
+if echo "$BODY" | grep -q '"notes":"Smoke test oil change"'; then
+  ok "Maintenance notes persisted"
+else
+  fail "Maintenance notes persisted" "notes not found in: $BODY"
+fi
+
+# ── Step 9d: Edit maintenance record ───────────────────────────────────────
+
+echo "[9d] Edit maintenance record"
+STATUS=$(req_status PUT "/api/autos/$AUTO_ID/maintenance/$MAINT_ID" \
+  -d "{\"type\":\"TireRotation\",\"performedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"odometer\":10150,\"cost\":29.99,\"notes\":\"Updated smoke test\"}")
+BODY=$(cat /tmp/smoke_body)
+assert_status "PUT /api/autos/$AUTO_ID/maintenance/$MAINT_ID" "200" "$STATUS" "$BODY"
+
+# ── Step 9e: Delete maintenance record → no longer in list ─────────────────
+
+echo "[9e] Delete maintenance record"
+STATUS=$(req_status DELETE "/api/autos/$AUTO_ID/maintenance/$MAINT_ID")
+assert_status "DELETE /api/autos/$AUTO_ID/maintenance/$MAINT_ID" "204" "$STATUS" ""
+STATUS=$(req_status GET "/api/autos/$AUTO_ID/maintenance")
+BODY=$(cat /tmp/smoke_body)
+if echo "$BODY" | grep -q '"id"'; then
+  fail "Maintenance record removed" "list is not empty after delete: $BODY"
+else
+  ok "Maintenance record removed from list"
+fi
+
 # ── Step 10: Edit auto ──────────────────────────────────────────────────────
 
 echo "[10] Edit auto"

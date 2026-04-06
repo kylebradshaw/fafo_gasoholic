@@ -3,19 +3,39 @@
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10)
-- No other installs needed — SQLite is bundled via NuGet, no separate DB server required
+- [Node.js + npm](https://nodejs.org/) (for Angular frontend)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) (runs SQL Server locally)
 
 ## Running locally
 
+Use `start.sh` — it handles Docker, SQL Server health checks, migrations, and server startup automatically.
+
 ```bash
-dotnet run
+./start.sh           # dev mode (Angular dev server + .NET API)
+./start.sh --prod    # prod mode (build Angular once, serve from .NET static files)
+./start.sh --quick   # quick mode (skip Angular build, assumes wwwroot/browser/ exists)
+./start.sh --help    # show all options
 ```
 
-Open [http://localhost:5082](http://localhost:5082). The SQLite database (`gasoholic.db`) is created automatically on first run via `Database.Migrate()` in `Program.cs`.
+`start.sh` requires a `.env` file at the repo root with the SQL Server SA password:
 
-> **Port note:** The app binds to `localhost:5082` (configured in `Properties/launchSettings.json`), not 5000.
+```bash
+echo 'SA_PASSWORD=YourPassword123!' > .env
+```
 
-Email magic links are logged to the console in development — no real email is sent. Look for a line like:
+### Dev mode (default)
+
+- Angular dev server runs at `http://localhost:4200` with live reload
+- .NET API runs at `http://localhost:5082`
+- Angular proxies `/api/` requests to .NET
+- Open `http://localhost:4200` in your browser
+
+### Prod / quick mode
+
+- .NET serves Angular from `wwwroot/browser/` (static files)
+- Open `http://localhost:5082` in your browser
+
+Email magic links are logged to the console in development — no real email is sent:
 
 ```
 [DEV] Magic link: http://localhost:5082/auth/verify?token=...
@@ -27,12 +47,37 @@ Copy and open that URL in the browser to complete login.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `DATABASE_PROVIDER` | `sqlite` | `sqlite` or `sqlserver` |
-| `ConnectionStrings__DefaultConnection` | `Data Source=gasoholic.db` | SQLite path |
+| `ConnectionStrings__SqlServer` | (see appsettings.Development.json) | SQL Server connection string |
 | `CORS_ORIGINS` | `http://localhost:5082,https://localhost:7046` | Comma-separated allowed origins |
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Controls email sending, session behavior |
 
-In `Development` mode: magic links print to console, sessions use in-memory cache, SQLite is the default database.
+In `Development` mode: magic links print to console, sessions use the SQL Server distributed cache.
+
+## Docker (SQL Server) maintenance
+
+```bash
+# Start SQL Server in background
+docker compose up -d
+
+# Stop SQL Server
+docker compose down
+
+# Stop and delete all data (volume)
+docker compose down -v
+
+# View SQL Server logs
+docker compose logs sqlserver
+
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' gasoholic-sqlserver
+
+# Connect with sqlcmd (inside container)
+docker exec -it gasoholic-sqlserver \
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C
+
+# Apply pending migrations manually
+dotnet ef database update
+```
 
 ## Build
 
@@ -49,8 +94,7 @@ docker buildx build --platform linux/arm64 -t gasoholic --load .
 
 # Run:
 docker run --platform linux/arm64 \
-  -e DATABASE_PROVIDER=sqlite \
-  -e "ConnectionStrings__DefaultConnection=Data Source=/tmp/gasoholic.db" \
+  -e "ConnectionStrings__SqlServer=Server=host.docker.internal,1433;Database=$DB_NAME$;User Id=sa;Password=$SA_PASSWORD;TrustServerCertificate=True;Encrypt=False;" \
   -p 8080:8080 gasoholic
 
 # Health check:
@@ -64,51 +108,60 @@ curl http://localhost:8080/health   # → {"status":"ok"}
 ```
 gasoholic.csproj          .NET 10 project file — packages, SDK version
 Program.cs                Entry point: DI registration, middleware, route mapping
-appsettings.json          Base config (SQLite connection string, session timeout)
-appsettings.Development.json  Dev-only overrides
+appsettings.json          Base config
+appsettings.Development.json  Dev-only overrides (SQL Server connection string)
+docker-compose.yml        SQL Server container for local development
+start.sh                  Dev startup script — Docker, migrations, Angular + .NET
 
 Data/
-  AppDbContext.cs         EF Core DbContext — all three DbSets, model config
+  AppDbContext.cs         EF Core DbContext — all DbSets, model config
 
 Endpoints/
   AuthEndpoints.cs        /auth/login, /auth/logout, /auth/me, /auth/verify, /auth/resend
   AutoEndpoints.cs        /api/autos CRUD
   FillupEndpoints.cs      /api/autos/{id}/fillups CRUD + MPG computation
-  SmokeTestEndpoints.cs   /auth/dev-login (only active when SMOKE_TEST_SECRET is set)
+  MaintenanceEndpoints.cs /api/autos/{id}/maintenance CRUD
+  SmokeTestEndpoints.cs   /auth/dev-login, /auth/dev-cleanup, /auth/test-email (SMOKE_TEST_SECRET gated)
 
 Models/
-  User.cs                 User entity (Id, Email, EmailVerified, CreatedAt)
-  Auto.cs                 Auto entity (Brand, Model, Plate, Odometer)
+  User.cs                 User entity
+  Auto.cs                 Auto entity
   Fillup.cs               Fillup entity (all fuel fields, GPS coords, partial fill flag)
-  VerificationToken.cs    Magic link token entity (GUID, expiry, used timestamp)
-  Enums.cs                FuelType enum: Regular, MidGrade, Premium, Diesel, E85
+  MaintenanceRecord.cs    Maintenance record entity
+  VerificationToken.cs    Magic link token entity
+  Enums.cs                FuelType, MaintenanceType enums
 
 Migrations/               EF Core migration files — never edit by hand
-  *_InitialCreate.cs      Base schema (Users, Autos, Fillups)
-  *_AddEmailVerification.cs  Adds EmailVerified + VerificationTokens table
+  *_InitialCreate.cs      Full schema (SQL Server-native types)
+  *_CreateSessionCache.cs SessionCache table for distributed session
 
-wwwroot/
-  index.html              Login page — email input, magic link pending state
-  app.html                Main app shell — auto selector, Log tab, Autos tab
+client/                   Angular 17+ frontend
+  src/app/
+    core/                 Services, guards, pipes
+    features/             Login, app-shell, fillups, autos, maintenance
+    shared/               Toast component
+
+wwwroot/browser/          Angular production build output (gitignored, generated by npm run build)
 
 infra/
-  main.bicep              Azure infrastructure as code (ACR, Container App, KV, ACS)
+  main.bicep              Azure infrastructure as code
 
 .github/
   workflows/
     azure-deploy.yml      CI/CD: build image → push to ACR → update Container App → smoke test
 
-Dockerfile                Multi-stage build: SDK → publish → aspnet runtime, port 8080
-smoke-test.sh             End-to-end bash test script against any deployed URL
+Dockerfile                Multi-stage build: Node (Angular) + SDK → publish → aspnet runtime, port 8080
+smoke-test.sh             End-to-end bash test script against any deployed URL, requires SMOKE_TEST_SECRET env var
 deploy.sh                 One-command provision + deploy to Azure
 ```
 
 ## Testing
 
-All tests live in `e2e/`. There are two layers:
+All tests live in `e2e/` (Playwright) and `Tests/` (.NET integration tests).
 
 | Layer | Location | What it tests | When to run |
 |---|---|---|---|
+| **.NET integration** | `Tests/` | API endpoints with real SQL Server | Local dev |
 | **UI tests** | `e2e/tests/*.spec.ts` | Browser interactions — login, autos, fillups, RWD | Local dev |
 | **Smoke tests** | `e2e/smoke/happy-path.spec.ts` | Full API happy path end-to-end | After every deploy |
 
@@ -128,64 +181,42 @@ export SMOKE_TEST_SECRET=$(az keyvault secret show --vault-name gasoholic-kv --n
 
 Add that export to your shell profile (`~/.zshrc`) so it's always available.
 
-### Running locally (against the local dev server)
+### Running locally
 
 ```bash
 cd e2e
 
-# Run all tests (spins up dotnet run automatically)
+# Run all UI + smoke tests (spins up dotnet run automatically)
 npm test
 
-# UI tests only (browser-based)
+# UI tests only
 npm run test:ui
 
-# Smoke tests only (API-level, also works locally)
+# Smoke tests only
 npm run test:smoke
 
 # Open the HTML report after a run
 npm run report
 ```
 
-The `webServer` in `playwright.config.ts` starts `dotnet run` automatically if `BASE_URL` is not set — you don't need to start the app separately.
-
 ### Running against production
 
 ```bash
 cd e2e
-
 BASE_URL=https://gas.sdir.cc npm run test:smoke
-```
-
-The smoke tests (`@smoke`) are API-level and environment-agnostic — they work against any URL. The UI browser tests (`tests/`) are designed for local use.
-
-### Test structure
-
-```
-e2e/
-  playwright.config.ts     Config — baseURL, webServer (local only), chromium
-  helpers/
-    auth.ts                devLogin() helper — authenticates via /auth/dev-login
-  tests/
-    login.spec.ts          Login page UI + Enter key + mobile layout
-    app-shell.spec.ts      Add/edit/delete autos, logout, auth guard
-    fillup-log.spec.ts     Fillup table rendering, MPG, delete, mobile scroll
-    fillup-modal.spec.ts   Add/edit modal, GPS denial, validation
-    polish.spec.ts         RWD breakpoints, full happy path, error toast
-  smoke/
-    happy-path.spec.ts     13 API smoke tests tagged @smoke
 ```
 
 ---
 
 ## How code flows from dev to production
 
-1. **Write** — edit `.cs` files in `Endpoints/`, `Models/`, `Data/`; edit HTML/JS in `wwwroot/`
-2. **Test locally** — `dotnet run`, hit `localhost:5000`
+1. **Write** — edit `.cs` files in `Endpoints/`, `Models/`, `Data/`; edit Angular code in `client/src/`
+2. **Test locally** — `./start.sh`, open `localhost:4200`
 3. **Commit + push to `main`** — GitHub Actions picks it up automatically
 4. **CI builds** — `docker buildx build --platform linux/amd64` using the `Dockerfile`
 5. **CI pushes** — image tagged with the git short SHA → `gasoholicacr.azurecr.io/gasoholic:<sha>`
 6. **CI deploys** — `az containerapp update --image <new-tag>` creates a new Container App revision
-7. **Smoke test runs** — `smoke-test.sh` hits the live URL, verifies all 14 steps pass
+7. **Smoke test runs** — `smoke-test.sh` hits the live URL, verifies all steps pass
 
 Schema changes require an EF Core migration:
 

@@ -125,7 +125,7 @@ public static class FillupEndpoints
                 }
             }
 
-            if (priorIdx >= 0)
+            if (priorIdx >= 0 && !current.IsPartialFill)
             {
                 var prior = fillups[priorIdx];
                 var ododelta = (double)(current.Odometer - prior.Odometer);
