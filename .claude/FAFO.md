@@ -356,3 +356,36 @@ Implemented the full maintenance history feature per PRD `.claude/prd/maintenanc
 - `client/src/app/app.routes.ts`: Added `/app/maintenance` lazy route.
 
 **Build status:** `dotnet build` — 0 errors. `tsc --noEmit` — 0 errors.
+
+---
+
+## Session: 2026-04-06
+
+### DB Transition: Unify on SQL Server (drop SQLite dual-provider path)
+
+Implemented `.claude/plans/db-transition.md` in full.
+
+**Phase 1 — Docker infrastructure**
+- `docker-compose.yml`: Already existed using `mcr.microsoft.com/azure-sql-edge:latest`; updated healthcheck to try both `/opt/mssql-tools/bin/sqlcmd` and `/opt/mssql-tools18/bin/sqlcmd` paths (azure-sql-edge varies).
+- `.env`: Created (gitignored) with `SA_PASSWORD=${SA_PASSWORD}` — this sets the SA password for the Docker container.
+- `.gitignore`: Added `*.db`, `*.db-shm`, `*.db-wal` patterns (SQLite artifacts no longer needed).
+
+**Phase 2 — SQLite removal**
+- Already complete before this session: `Program.cs`, `AppDbContextFactory.cs`, `GasoholicWebAppFactory.cs`, and `gasoholic.csproj` had all been updated to SQL Server only.
+- Added `Encrypt=False` to all local dev connection strings (appsettings.Development.json, AppDbContextFactory.cs, GasoholicWebAppFactory.cs) — required because azure-sql-edge has a TLS handshake incompatibility with newer SqlClient versions.
+
+**Phase 3 — Migrations regenerated**
+- Deleted all old SQLite/dual-provider migrations (InitialCreate, AddEmailVerification, FixEmailIndexForSqlServer, AddSignInTracking, FixSignInColumnTypes, AddMaintenanceRecords).
+- Generated clean `Migrations/20260406005633_InitialCreate.cs` — single SQL Server-native migration for all tables (Users, Autos, VerificationTokens, Fillups, MaintenanceRecords) using proper `datetime2`, `nvarchar`, `bit`, `decimal(18,2)` types.
+- Added `Migrations/20260406010259_CreateSessionCache.cs` — creates the `[dbo].[SessionCache]` table needed by `Microsoft.Extensions.Caching.SqlServer` (idempotent IF NOT EXISTS check). Previously this table was managed separately; now part of EF migration flow.
+- Applied both migrations to a fresh SQL Server database. App starts and listens on `:5082` cleanly.
+
+**Phase 4 — start.sh**
+- Updated `check_prerequisites` to verify Docker is installed and daemon is running.
+- Added `start_sqlserver` function: `docker compose up -d`, wait loop polling health status (up to 30 attempts × 3s), then `dotnet ef database update`.
+- `main()` calls `start_sqlserver` before entering mode-specific startup.
+- Updated help text to document Docker Desktop as a prerequisite.
+
+**Phase 5 — Cleanup**
+- `.claude/CLAUDE.md`: Updated project description from "SQLite (EF Core)" to "SQL Server (EF Core, Docker)".
+- Memory updated: `project_prod_environment.md` rewritten to reflect SQL Server everywhere.
