@@ -454,3 +454,19 @@ Created `.github/workflows/migrate-sqlserver-to-sqlite.yml` — a `workflow_disp
 - Idempotent: `rm -f` the SQLite DB before creating schema, safe to re-run
 - Uses `PRAGMA foreign_keys=OFF` during import to avoid ordering issues, then runs `foreign_key_check` after
 - Storage account name (`gasoholicdata`) and file share name (`gasoholicshare`) configured as env vars at workflow level — adjust if actual Azure resource names differ
+
+---
+
+## Session: 2026-04-10
+
+### Phase 3: Update CI/CD deploy pipeline for SQLite
+
+**Files changed:**
+
+1. `appsettings.Production.json` — Added `ConnectionStrings:Sqlite` set to `Data Source=/data/gasoholic.db`
+2. `infra/main.bicep` — Removed `DATABASE_PROVIDER=sqlserver`, `ConnectionStrings__SqlServer` env var, and `sql-connection` KV secret reference. Added `ConnectionStrings__Sqlite` env var with the Azure Files path. Removed SQL Server connection string comment.
+3. `.github/workflows/azure-deploy.yml` — Added pre-deploy CSV backup steps: downloads SQLite DB from Azure Files, exports all tables to CSV via sqlite3, uploads CSVs as artifacts with configurable retention (BACKUP_RETENTION_DAYS, default 30). Added STORAGE_ACCOUNT and FILE_SHARE env vars.
+4. `DEPLOYMENT.md` — Rewrote "Database" section for SQLite on Azure Files architecture. Removed all SQL Server references (DATABASE_PROVIDER, SqlConnection, SessionCache, Azure SQL Server subsection). Added Azure Storage subsection. Updated Key Vault secrets table, portal navigation tips, and deploy script description.
+5. `AZURE_SETUP_CHECKLIST.md` — Removed Step 1.5 (Azure SQL Database provisioning). Updated troubleshooting to reference SQLite/Azure Files instead of SqlConnection. Updated database query and backup sections. Replaced Azure SQL row with Storage Account row in Quick Reference table. Updated disaster recovery section.
+6. `infra/README.md` — Complete rewrite from "Azure Deployment Guide" (which described SQL Server provisioning steps) to "Azure Infrastructure (Bicep)" describing the current SQLite + Azure Files architecture, cost estimates, and deploy commands.
+7. `Dockerfile` — No changes needed; already has USER root for Azure Files SMB write access.

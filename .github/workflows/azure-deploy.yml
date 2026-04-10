@@ -10,6 +10,9 @@ env:
   AZURE_CONTAINER_APP: gasoholic
   AZURE_RESOURCE_GROUP: gasoholic-rg
   ACR_NAME: gasoholicacr
+  STORAGE_ACCOUNT: gasoholicdata
+  FILE_SHARE: data
+  BACKUP_RETENTION_DAYS: 30
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -41,6 +44,46 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # ── Pre-deploy: backup SQLite database to CSV ─────────────────────────
+      - name: Download SQLite database from Azure Files
+        run: |
+          KEY=$(az storage account keys list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[0].value" -o tsv)
+          echo "::add-mask::$KEY"
+
+          mkdir -p backup
+          az storage file download \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --account-key "$KEY" \
+            --share-name ${{ env.FILE_SHARE }} \
+            --path gasoholic.db \
+            --dest backup/gasoholic.db \
+            --no-progress || echo "WARNING: No existing database found — skipping backup"
+
+      - name: Export SQLite tables to CSV
+        if: hashFiles('backup/gasoholic.db') != ''
+        run: |
+          sudo apt-get install -y sqlite3
+          mkdir -p csv-backup
+
+          TABLES=$(sqlite3 backup/gasoholic.db ".tables")
+          for TABLE in $TABLES; do
+            sqlite3 -header -csv backup/gasoholic.db "SELECT * FROM $TABLE;" > "csv-backup/${TABLE}.csv"
+            ROWS=$(sqlite3 backup/gasoholic.db "SELECT COUNT(*) FROM $TABLE")
+            echo "$TABLE: $ROWS rows"
+          done
+
+      - name: Upload CSV backup artifacts
+        if: hashFiles('csv-backup/*.csv') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-deploy-csv-backup-${{ github.sha }}
+          path: csv-backup/
+          retention-days: ${{ env.BACKUP_RETENTION_DAYS }}
+
+      # ── Build and deploy ───────────────────────────────────────────────────
       - name: Login to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
 

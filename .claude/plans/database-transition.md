@@ -87,16 +87,16 @@ Update the production deploy pipeline so the container app runs against SQLite o
 
 ### Acceptance criteria
 
-- [ ] `appsettings.Production.json` has `ConnectionStrings:Sqlite` set to `Data Source=/data/gasoholic.db`
-- [ ] `azure-deploy.yml` includes a pre-deploy step that downloads the SQLite file from Azure Files, dumps all tables to CSV, and uploads CSVs as GitHub Actions artifacts
-- [ ] CSV backup artifacts have configurable retention
-- [ ] Dockerfile remains compatible with Azure Files SMB mount at `/data`
+- [x] `appsettings.Production.json` has `ConnectionStrings:Sqlite` set to `Data Source=/data/gasoholic.db`
+- [x] `azure-deploy.yml` includes a pre-deploy step that downloads the SQLite file from Azure Files, dumps all tables to CSV, and uploads CSVs as GitHub Actions artifacts
+- [x] CSV backup artifacts have configurable retention
+- [x] Dockerfile remains compatible with Azure Files SMB mount at `/data`
 - [ ] Container app deploys successfully and serves traffic using SQLite
 - [ ] Health endpoint returns 200 after deploy
 - [ ] Smoke tests pass against the deployed container
-- [ ] `DEPLOYMENT.md` updated — Remove Azure SQL provisioning steps, SessionCache table creation, `DATABASE_PROVIDER` references; replace with SQLite on Azure Files architecture
-- [ ] `AZURE_SETUP_CHECKLIST.md` updated — Remove Step 1.5 (Azure SQL Database), update troubleshooting (remove SqlConnection references), update cost table, update Quick Reference table (remove Azure SQL row)
-- [ ] `infra/README.md` updated — Reflect SQLite + Azure Files instead of Azure SQL in Bicep description
+- [x] `DEPLOYMENT.md` updated — Remove Azure SQL provisioning steps, SessionCache table creation, `DATABASE_PROVIDER` references; replace with SQLite on Azure Files architecture
+- [x] `AZURE_SETUP_CHECKLIST.md` updated — Remove Step 1.5 (Azure SQL Database), update troubleshooting (remove SqlConnection references), update cost table, update Quick Reference table (remove Azure SQL row)
+- [x] `infra/README.md` updated — Reflect SQLite + Azure Files instead of Azure SQL in Bicep description
 
 ---
 

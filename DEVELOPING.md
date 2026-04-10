@@ -16,6 +16,31 @@ Use `start.sh` — it handles migrations and server startup automatically.
 ./start.sh --help    # show all options
 ```
 
+## REISSUE AUTH SESSION WITHIN 24h
+
+good for local dev so you don't have to blow away the db
+
+```bash
+  curl -X POST http://localhost:5082/auth/resend \
+    -H "Content-Type: application/json" \
+    -d '{"email": "gas@sdir.cc"}'
+```
+
+after running curl, a magic link will print in the console output of `start.sh` — copy and open that URL to complete login and refresh your session cookie.
+
+```bash
+      ╔══════════════════════════════════════════════════════╗
+fail: VerificationEmailSender[0]
+      ║  MAGIC LINK for gas@sdir.cc
+fail: VerificationEmailSender[0]
+      ║  http://localhost:5082/auth/verify?token=7f894d5a1ea342e996d8a335c7fdcabc
+fail: VerificationEmailSender[0]
+      ╚══════════════════════════════════════════════════════╝
+
+Change url to localhost:4200 if you're running in dev mode with the Angular dev server, or keep it as localhost:5082 if you're running in prod/quick mode with .NET static file hosting.
+
+```
+
 ### Dev mode (default)
 
 - Angular dev server runs at `http://localhost:4200` with live reload
