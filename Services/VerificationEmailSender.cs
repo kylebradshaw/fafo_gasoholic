@@ -32,7 +32,10 @@ public class VerificationEmailSender : IVerificationEmailSender
         if (_client is null || _fromAddress is null)
         {
             // Dev mode: log the link so it can be used without email
-            _logger.LogWarning("ACS not configured — magic link for {Email}: {Link}", toEmail, link);
+            _logger.LogError("\u001b[1;31m╔══════════════════════════════════════════════════════╗\u001b[0m");
+            _logger.LogError("\u001b[1;31m║  MAGIC LINK for {Email}\u001b[0m", toEmail);
+            _logger.LogError("\u001b[1;31m║  {Link}\u001b[0m", link);
+            _logger.LogError("\u001b[1;31m╚══════════════════════════════════════════════════════╝\u001b[0m");
             return;
         }
 

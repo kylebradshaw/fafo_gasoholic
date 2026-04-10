@@ -19,9 +19,6 @@ ${BLUE}Gasoholic - Development Startup Script${NC}
 
 Usage: ./start.sh [OPTIONS]
 
-PREREQUISITES:
-  Docker Desktop must be installed and running (starts SQL Server automatically)
-
 OPTIONS:
   --prod          Build Angular once, run .NET server (production-like, slower)
   --quick         Quick test: just run .NET (assumes Angular already built)
@@ -99,19 +96,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-load_env() {
-  if [ -f .env ]; then
-    set -a
-    # shellcheck source=.env
-    source .env
-    set +a
-  else
-    echo -e "${RED}✗ .env file not found${NC}"
-    echo "  Create one with: echo 'SA_PASSWORD=<your-password>' > .env"
-    exit 1
-  fi
-}
-
 check_prerequisites() {
   echo -e "${BLUE}Checking prerequisites...${NC}"
 
@@ -139,45 +123,10 @@ check_prerequisites() {
   fi
   echo -e "${GREEN}✓ .NET $(dotnet --version)${NC}"
 
-  # Check Docker
-  if ! command -v docker &> /dev/null; then
-    echo -e "${RED}✗ Docker not found${NC}"
-    echo "  Install from: https://www.docker.com/products/docker-desktop"
-    exit 1
-  fi
-  if ! docker info &> /dev/null; then
-    echo -e "${RED}✗ Docker daemon not running${NC}"
-    echo "  Start Docker Desktop and try again"
-    exit 1
-  fi
-  echo -e "${GREEN}✓ Docker $(docker --version | awk '{print $3}' | tr -d ',')${NC}"
-
   echo ""
 }
 
-start_sqlserver() {
-  echo -e "${BLUE}Starting SQL Server (Docker)...${NC}"
-  docker compose up -d
-
-  echo -e "${BLUE}Waiting for SQL Server to be healthy...${NC}"
-  local attempts=0
-  local max_attempts=30
-  while [ $attempts -lt $max_attempts ]; do
-    local status
-    status=$(docker inspect --format='{{.State.Health.Status}}' gasoholic-sqlserver 2>/dev/null || echo "missing")
-    if [ "$status" = "healthy" ]; then
-      echo -e "${GREEN}✓ SQL Server is healthy${NC}"
-      break
-    fi
-    attempts=$((attempts + 1))
-    if [ $attempts -eq $max_attempts ]; then
-      echo -e "${RED}✗ SQL Server did not become healthy after $max_attempts attempts${NC}"
-      echo "  Check: docker compose logs sqlserver"
-      exit 1
-    fi
-    sleep 3
-  done
-
+apply_migrations() {
   echo -e "${BLUE}Applying database migrations...${NC}"
   dotnet ef database update
   echo -e "${GREEN}✓ Migrations applied${NC}"
@@ -287,9 +236,8 @@ main() {
   echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
   echo ""
 
-  load_env
   check_prerequisites
-  start_sqlserver
+  apply_migrations
 
   case $MODE in
     dev)

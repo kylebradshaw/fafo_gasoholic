@@ -403,3 +403,70 @@ Implemented `.claude/plans/db-transition.md` in full.
   8. Switching auto reloads / deselects maintenance records
   9. Table scrollable on mobile viewport (375px)
 - Pattern follows existing tests (fillup-log.spec.ts, fillup-modal.spec.ts): devLogin, seed via API, select auto, assert DOM
+
+---
+
+## 2026-04-10
+
+### Phase 1: Swap EF Core provider to SQLite (database-transition plan)
+
+Completed the full SQL Server → SQLite provider swap for local dev and tests.
+
+**Files changed:**
+- `gasoholic.csproj` — Removed `Microsoft.EntityFrameworkCore.SqlServer` + `Microsoft.Extensions.Caching.SqlServer`, added `Microsoft.EntityFrameworkCore.Sqlite`
+- `Tests/Tests.csproj` — Removed `Microsoft.EntityFrameworkCore.Design` + `Tools`, added `Microsoft.EntityFrameworkCore.Sqlite`
+- `Program.cs` — `UseSqlite()` + `AddDistributedMemoryCache()` replacing SQL Server equivalents; removed SA_PASSWORD logic; added WAL mode PRAGMA after migration
+- `Data/AppDbContextFactory.cs` — Design-time factory now targets SQLite (`Data Source=gasoholic.db`), no SA_PASSWORD
+- `appsettings.Development.json` — `ConnectionStrings:Sqlite` replaces `ConnectionStrings:SqlServer`
+- `appsettings.Testing.json` — Updated to SQLite connection string
+- `Tests/GasoholicWebAppFactory.cs` — Per-test temp SQLite file in system temp dir; no SA_PASSWORD, no DROP DATABASE teardown; file cleanup on dispose
+- `.gitignore` — Added `gasoholic.db`, `gasoholic.db-shm`, `gasoholic.db-wal`
+- `docker-compose.yml` — Deleted (SQL Server container no longer needed)
+- `Migrations/` — All SQL Server migrations deleted; fresh `InitialCreate` generated for SQLite
+- `.claude/CLAUDE.md` — Updated project description to reflect SQLite
+
+**Result:** All 67 integration tests pass against SQLite.
+
+### Phase 1b: Update local dev documentation for SQLite
+
+Updated all local-dev-facing documentation to reflect the SQL Server → SQLite transition.
+
+**Files changed:**
+- `DEVELOPING.md` — Removed Docker Desktop prerequisite, SA_PASSWORD/.env setup, all `docker compose` commands, Docker maintenance section; updated env vars table to `ConnectionStrings__Sqlite`; updated project structure (removed docker-compose.yml, updated migrations description); updated testing table ("per-test SQLite databases" instead of "real SQL Server"); updated container test commands to use SQLite connection string
+- `README.md` — Stack line updated to "SQLite" (removed "Azure SQL" split); tech stack table: removed SQL Server row, updated SQLite to "all environments", updated Distributed Caching to "In-memory"; removed Docker from Infrastructure & DevOps table
+- `DOCUMENTATION_INDEX.md` — Architecture table: database row now "SQLite (all environments)"; removed "Azure SQL in West US 2" from decision log; removed "SQL" from Phase 1 infrastructure description; updated last-updated date to 2026-04-10
+
+### Phase 2: One-time data migration workflow
+
+Created `.github/workflows/migrate-sqlserver-to-sqlite.yml` — a `workflow_dispatch`-triggered GitHub Actions workflow that migrates production data from Azure SQL Server to SQLite on Azure Files.
+
+**Workflow steps:**
+1. Installs `sqlcmd`, retrieves SQL Server connection string from Key Vault (`gasoholic-kv/SqlConnection`)
+2. Exports all 5 tables (Users, Autos, Fillups, MaintenanceRecords, VerificationTokens) to CSV
+3. Uploads CSVs as GitHub Actions artifacts (90-day retention) — serves as backup regardless of migration outcome
+4. Builds the .NET project and runs `dotnet ef database update` to create a fresh SQLite database with the correct schema
+5. Python script parses sqlcmd CSV output and imports all rows preserving primary keys (foreign keys disabled during import, re-enabled and verified after)
+6. Verifies row counts match between SQL Server source and SQLite target — workflow fails on mismatch
+7. Uploads the SQLite file to Azure Files (`gasoholicdata` storage account, `gasoholicshare` file share) as `gasoholic.db`
+8. Verifies upload by comparing file sizes
+
+**Key design decisions:**
+- Idempotent: `rm -f` the SQLite DB before creating schema, safe to re-run
+- Uses `PRAGMA foreign_keys=OFF` during import to avoid ordering issues, then runs `foreign_key_check` after
+- Storage account name (`gasoholicdata`) and file share name (`gasoholicshare`) configured as env vars at workflow level — adjust if actual Azure resource names differ
+
+---
+
+## Session: 2026-04-10
+
+### Phase 3: Update CI/CD deploy pipeline for SQLite
+
+**Files changed:**
+
+1. `appsettings.Production.json` — Added `ConnectionStrings:Sqlite` set to `Data Source=/data/gasoholic.db`
+2. `infra/main.bicep` — Removed `DATABASE_PROVIDER=sqlserver`, `ConnectionStrings__SqlServer` env var, and `sql-connection` KV secret reference. Added `ConnectionStrings__Sqlite` env var with the Azure Files path. Removed SQL Server connection string comment.
+3. `.github/workflows/azure-deploy.yml` — Added pre-deploy CSV backup steps: downloads SQLite DB from Azure Files, exports all tables to CSV via sqlite3, uploads CSVs as artifacts with configurable retention (BACKUP_RETENTION_DAYS, default 30). Added STORAGE_ACCOUNT and FILE_SHARE env vars.
+4. `DEPLOYMENT.md` — Rewrote "Database" section for SQLite on Azure Files architecture. Removed all SQL Server references (DATABASE_PROVIDER, SqlConnection, SessionCache, Azure SQL Server subsection). Added Azure Storage subsection. Updated Key Vault secrets table, portal navigation tips, and deploy script description.
+5. `AZURE_SETUP_CHECKLIST.md` — Removed Step 1.5 (Azure SQL Database provisioning). Updated troubleshooting to reference SQLite/Azure Files instead of SqlConnection. Updated database query and backup sections. Replaced Azure SQL row with Storage Account row in Quick Reference table. Updated disaster recovery section.
+6. `infra/README.md` — Complete rewrite from "Azure Deployment Guide" (which described SQL Server provisioning steps) to "Azure Infrastructure (Bicep)" describing the current SQLite + Azure Files architecture, cost estimates, and deploy commands.
+7. `Dockerfile` — No changes needed; already has USER root for Azure Files SMB write access.

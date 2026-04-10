@@ -100,9 +100,6 @@ resource acsDomainSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
-// SQL Server connection string — pre-created manually in KV; referenced here by URL.
-// To create/update: az keyvault secret set --vault-name gasoholic-kv --name SqlConnection --value "<connstr>"
-
 // ── Container Apps Environment (free — consumption plan) ─────────────────────
 
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -147,11 +144,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           identity: 'system'
         }
         {
-          name: 'sql-connection'
-          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SqlConnection'
-          identity: 'system'
-        }
-        {
           name: 'smoke-test-secret'
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SmokeTestSecret'
           identity: 'system'
@@ -164,8 +156,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: appName
           image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           env: [
-            { name: 'DATABASE_PROVIDER',                       value: 'sqlserver' }
-            { name: 'ConnectionStrings__SqlServer',            secretRef: 'sql-connection' }
+            { name: 'ConnectionStrings__Sqlite',               value: 'Data Source=/data/gasoholic.db' }
             { name: 'ConnectionStrings__ACS',                  secretRef: 'acs-connection' }
             { name: 'AcsSenderDomain',                         secretRef: 'acs-sender-domain' }
             { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain},https://gas.sdir.cc' }

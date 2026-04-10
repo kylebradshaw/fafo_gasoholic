@@ -117,6 +117,62 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         Assert.Equal(email.ToLowerInvariant(), sent.Email);
     }
 
+    // ── magic-link origin ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Login_MagicLinkBaseUrl_UsesOriginHeader()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"origin-{Guid.NewGuid()}@test.com";
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/auth/login")
+        {
+            Content = JsonContent.Create(new { email }),
+            Headers = { { "Origin", "http://localhost:4200" } }
+        };
+        await client.SendAsync(request);
+
+        var sent = mockSender.SentMagicLinks.Last();
+        Assert.Equal("http://localhost:4200", sent.BaseUrl);
+    }
+
+    [Fact]
+    public async Task Login_MagicLinkBaseUrl_FallsBackToRequestHost_WhenNoOrigin()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"noorigin-{Guid.NewGuid()}@test.com";
+
+        await client.PostAsJsonAsync("/auth/login", new { email });
+
+        var sent = mockSender.SentMagicLinks.Last();
+        // Should fall back to the request host (the test server's address)
+        Assert.StartsWith("http://", sent.BaseUrl);
+        Assert.DoesNotContain("4200", sent.BaseUrl);
+    }
+
+    [Fact]
+    public async Task Resend_MagicLinkBaseUrl_UsesOriginHeader()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"resend-origin-{Guid.NewGuid()}@test.com";
+
+        // Create user first
+        await client.PostAsJsonAsync("/auth/login", new { email });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/auth/resend")
+        {
+            Content = JsonContent.Create(new { email }),
+            Headers = { { "Origin", "http://localhost:4200" } }
+        };
+        await client.SendAsync(request);
+
+        var sent = mockSender.SentMagicLinks.Last();
+        Assert.Equal("http://localhost:4200", sent.BaseUrl);
+    }
+
     // ── /auth/verify ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -134,6 +190,31 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         // Expect redirect to /app.html (we set AllowAutoRedirect = false)
         Assert.Equal(HttpStatusCode.Redirect, resp.StatusCode);
         Assert.Contains("/app.html", resp.Headers.Location?.ToString() ?? "");
+    }
+
+    [Fact]
+    public async Task Verify_ValidToken_SessionWorksForApiCalls()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"verify-session-{Guid.NewGuid()}@test.com";
+
+        // Login to create user + token
+        await client.PostAsJsonAsync("/auth/login", new { email });
+        var token = mockSender.SentMagicLinks.Last().Token;
+
+        // Verify — sets session cookie on the same client
+        var verifyResp = await client.GetAsync($"/auth/verify?token={token}");
+        Assert.Equal(HttpStatusCode.Redirect, verifyResp.StatusCode);
+
+        // The same client (same cookie jar) should now be authenticated
+        var meResp = await client.GetAsync("/auth/me");
+        Assert.Equal(HttpStatusCode.OK, meResp.StatusCode);
+
+        // And should be able to create an auto (the exact scenario that failed)
+        var autoResp = await client.PostAsJsonAsync("/api/autos",
+            new { brand = "Toyota", model = "Highlander", plate = "BJK715", odometer = 93005m });
+        Assert.Equal(HttpStatusCode.Created, autoResp.StatusCode);
     }
 
     [Fact]

@@ -45,7 +45,8 @@
       "Bash(pkill -9 -f \"ng build\")",
       "Bash(dotnet test:*)",
       "Bash(npx playwright:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "WebFetch(domain:api.github.com)"
     ]
   },
   "sandbox": {

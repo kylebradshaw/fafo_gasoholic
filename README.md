@@ -5,7 +5,7 @@ A Progressive Web App (PWA) for tracking vehicle fuel consumption and MPG across
 **Live:** https://gas.sdir.cc
 **Source:** This repository
 
-**Stack:** Angular 17+ · .NET 10 · EF Core · SQLite (local) / Azure SQL (production)
+**Stack:** Angular 17+ · .NET 10 · EF Core · SQLite
 
 ## Quick Start
 
@@ -39,10 +39,9 @@ See [Running locally](#running-locally) below for setup modes and options.
 | **.NET SDK** | 10.0.102 | Runtime & development environment |
 | **ASP.NET Core** | 10.0 | Minimal API framework |
 | **Entity Framework Core** | 10.0.4/10.0.5 | ORM for database operations |
-| **SQLite** | (via EF Core) | Primary database (local dev) |
-| **SQL Server** | (optional) | Production database (Azure) |
+| **SQLite** | (via EF Core) | Primary database (all environments) |
 | **Azure Communication Email** | 1.0.1 | Transactional email for magic link auth |
-| **Distributed Caching** | Built-in | Session storage & cache layer |
+| **Distributed Caching** | In-memory | Session storage (acceptable at <5 users) |
 
 ### Frontend
 | Technology | Version | Purpose |
@@ -66,7 +65,6 @@ See [Running locally](#running-locally) below for setup modes and options.
 ### Infrastructure & DevOps
 | Technology | Purpose |
 |---|---|
-| **Docker** | Containerized deployment |
 | **Azure Key Vault** | Secrets management & smoke testing |
 | **Session-based Auth** | HttpOnly cookie-based authentication |
 | **CORS** | Cross-origin resource sharing (configurable) |

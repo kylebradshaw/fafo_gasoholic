@@ -103,58 +103,6 @@ az containerapp show \
 
 Expected: `provisioningState: "Succeeded"` and `url: "gasoholic.xxxxx.eastus.azurecontainerapps.io"`
 
-### Step 1.5: Create Azure SQL Database
-
-The app needs a persistent database. Skip this if using SQLite locally only.
-
-```bash
-az sql server create \
-  --name gasoholic-sql \
-  --resource-group gasoholic-rg \
-  --location "West US 2" \
-  --admin-user sqladmin \
-  --admin-password "$(openssl rand -base64 16)"
-```
-
-Create the database:
-
-```bash
-az sql db create \
-  --server gasoholic-sql \
-  --resource-group gasoholic-rg \
-  --name gasoholic \
-  --edition Basic
-```
-
-Get the connection string and store in Key Vault:
-
-```bash
-CONNECTION_STRING=$(az sql db show-connection-string \
-  --client=ado.net \
-  --server gasoholic-sql \
-  --name gasoholic \
-  -o tsv)
-
-# Replace password placeholder
-CONNECTION_STRING="${CONNECTION_STRING/<password>/<password-you-set-above>}"
-
-az keyvault secret set \
-  --vault-name gasoholic-kv \
-  --name SqlConnection \
-  --value "$CONNECTION_STRING"
-```
-
-Configure firewall to allow Azure services:
-
-```bash
-az sql server firewall-rule create \
-  --server gasoholic-sql \
-  --resource-group gasoholic-rg \
-  --name "Allow Azure Services" \
-  --start-ip-address 0.0.0.0 \
-  --end-ip-address 0.0.0.0
-```
-
 ---
 
 ## Phase 2: Configure Email (Optional but Recommended)
@@ -409,23 +357,16 @@ az containerapp replica list \
   --resource-group gasoholic-rg
 ```
 
-**Query the database:**
+**Query the database (download from Azure Files first):**
 ```bash
-# If using Azure SQL
-az sql query --database gasoholic --name gasoholic-sql --query-string "SELECT COUNT(*) as user_count FROM Users"
+KEY=$(az storage account keys list --account-name gasoholicdata --resource-group gasoholic-rg --query "[0].value" -o tsv)
+az storage file download --account-name gasoholicdata --account-key "$KEY" --share-name data --path gasoholic.db --dest /tmp/gasoholic.db
+sqlite3 /tmp/gasoholic.db "SELECT COUNT(*) as user_count FROM Users"
 ```
 
 ### Backup the database
 
-Automated backups are enabled by default (7-day retention on Basic tier). Manual backup:
-
-```bash
-az sql db backup \
-  --server gasoholic-sql \
-  --resource-group gasoholic-rg \
-  --name gasoholic \
-  --backup-name "manual-$(date +%Y%m%d-%H%M%S)"
-```
+Pre-deploy CSV backups run automatically in the CI/CD pipeline (see `azure-deploy.yml`). For manual backups, download the SQLite file from Azure Files as shown above.
 
 ### Clean up old container images
 
@@ -453,7 +394,7 @@ az containerapp logs show --name gasoholic --resource-group gasoholic-rg
 
 **Common causes:**
 - Image not found in ACR → ensure image was pushed with correct tag
-- Database connection string missing → check Key Vault secret `SqlConnection` exists
+- SQLite database missing → verify Azure Files share `data` is mounted at `/data` and contains `gasoholic.db`
 - Port wrong → Dockerfile exposes 8080, make sure it matches
 
 ### DNS records not verifying
@@ -516,7 +457,7 @@ az group create --name gasoholic-rg --location eastus
 ./deploy.sh
 ```
 
-The database is separate from the resource group, so user data survives.
+The SQLite database lives on Azure Files in the same resource group. If the resource group is deleted, restore the database from a pre-deploy CSV backup artifact in GitHub Actions.
 
 ---
 
@@ -538,7 +479,7 @@ The database is separate from the resource group, so user data survives.
 | Container App | `gasoholic` | `gasoholic-env` |
 | ACR | `gasoholicacr` | East US |
 | Key Vault | `gasoholic-kv` | East US |
-| Azure SQL | `gasoholic-sql` | West US 2 |
+| Storage Account | `gasoholicdata` | East US — Azure Files share `data` mounted at `/data` |
 | ACS | `gasoholic-acs` | Global |
 
 **Handy commands:**

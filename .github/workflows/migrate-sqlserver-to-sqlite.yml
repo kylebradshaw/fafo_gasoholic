@@ -1,0 +1,276 @@
+name: Migrate SQL Server to SQLite
+
+on:
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  AZURE_RESOURCE_GROUP: gasoholic-rg
+  STORAGE_ACCOUNT: gasoholicdata
+  FILE_SHARE: data
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  migrate:
+    name: Export SQL Server → Import SQLite → Upload to Azure Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Step 1: Export SQL Server tables to CSV ──────────────────────────────
+      - name: Install sqlcmd
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc > /dev/null
+          sudo add-apt-repository "$(curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list)"
+          sudo apt-get update
+          sudo apt-get install -y sqlcmd
+
+      - name: Get SQL Server connection string from Key Vault
+        id: get-conn
+        run: |
+          CONN=$(az keyvault secret show \
+            --vault-name gasoholic-kv \
+            --name SqlConnection \
+            --query value -o tsv)
+          echo "::add-mask::$CONN"
+          echo "SQL_CONN=$CONN" >> "$GITHUB_ENV"
+
+      - name: Export tables to CSV
+        run: |
+          mkdir -p csv-export
+
+          TABLES=("Users" "Autos" "Fillups" "MaintenanceRecords" "VerificationTokens")
+
+          for TABLE in "${TABLES[@]}"; do
+            echo "Exporting $TABLE..."
+            sqlcmd -C -S "$(echo "$SQL_CONN" | grep -oP 'Server=tcp:\K[^;]+')" \
+              -d "$(echo "$SQL_CONN" | grep -oP 'Initial Catalog=\K[^;]+')" \
+              -U "$(echo "$SQL_CONN" | grep -oP 'User ID=\K[^;]+')" \
+              -P "$(echo "$SQL_CONN" | grep -oP 'Password=\K[^;]+')" \
+              -Q "SELECT * FROM [$TABLE]" \
+              -s "," -W -w 4096 \
+              -o "csv-export/${TABLE}.csv"
+
+            # Count rows (subtract header + dashes line from sqlcmd output)
+            ROWS=$(tail -n +3 "csv-export/${TABLE}.csv" | grep -c '[^[:space:]]' || true)
+            echo "${TABLE}_COUNT=$ROWS" >> "$GITHUB_ENV"
+            echo "  → $TABLE: $ROWS rows"
+          done
+
+      # ── Step 2: Upload CSVs as artifacts (backup) ───────────────────────────
+      - name: Upload CSV artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlserver-csv-export
+          path: csv-export/
+          retention-days: 90
+
+      # ── Step 3: Create SQLite database and import data ──────────────────────
+      - name: Install SQLite tools
+        run: sudo apt-get install -y sqlite3
+
+      - name: Build project (for EF Core migrations)
+        run: dotnet build gasoholic.csproj -c Release
+
+      - name: Create SQLite database with EF Core schema
+        run: |
+          rm -f gasoholic-migrated.db
+
+          # Apply migrations to create schema
+          dotnet ef database update \
+            --project gasoholic.csproj \
+            --connection "Data Source=gasoholic-migrated.db"
+
+          echo "Schema created. Tables:"
+          sqlite3 gasoholic-migrated.db ".tables"
+
+      - name: Import CSV data into SQLite
+        run: |
+          # Parse sqlcmd CSV output and import into SQLite
+          # sqlcmd output format: header row, dashes row, data rows, blank line, row count line
+          python3 << 'PYEOF'
+          import csv
+          import sqlite3
+          import sys
+          import os
+          import re
+
+          db = sqlite3.connect('gasoholic-migrated.db')
+          db.execute("PRAGMA journal_mode=WAL")
+          db.execute("PRAGMA foreign_keys=OFF")  # Disable during import for ordering flexibility
+
+          tables = {
+              "Users": {
+                  "columns": ["Id", "Email", "EmailVerified", "CreatedAt", "LastSignIn", "LastInteraction"],
+                  "types": {"Id": int, "EmailVerified": lambda v: v.strip().lower() in ("1", "true")},
+              },
+              "Autos": {
+                  "columns": ["Id", "UserId", "Brand", "Model", "Plate", "Odometer"],
+                  "types": {"Id": int, "UserId": int},
+              },
+              "Fillups": {
+                  "columns": ["Id", "AutoId", "FilledAt", "Location", "Latitude", "Longitude",
+                              "FuelType", "PricePerGallon", "Gallons", "Odometer", "IsPartialFill"],
+                  "types": {"Id": int, "AutoId": int, "IsPartialFill": lambda v: v.strip().lower() in ("1", "true")},
+              },
+              "MaintenanceRecords": {
+                  "columns": ["Id", "AutoId", "Type", "PerformedAt", "Odometer", "Cost", "Notes"],
+                  "types": {"Id": int, "AutoId": int},
+              },
+              "VerificationTokens": {
+                  "columns": ["Id", "UserId", "Token", "CreatedAt", "ExpiresAt", "UsedAt"],
+                  "types": {"Id": int, "UserId": int},
+              },
+          }
+
+          # Import order: parents first, then children
+          import_order = ["Users", "Autos", "Fillups", "MaintenanceRecords", "VerificationTokens"]
+
+          for table_name in import_order:
+              csv_path = f"csv-export/{table_name}.csv"
+              if not os.path.exists(csv_path):
+                  print(f"WARNING: {csv_path} not found, skipping")
+                  continue
+
+              info = tables[table_name]
+              columns = info["columns"]
+              type_map = info.get("types", {})
+
+              with open(csv_path, "r") as f:
+                  lines = f.readlines()
+
+              # sqlcmd output: line 0 = headers, line 1 = dashes (---), data starts at line 2
+              # Last lines may be blank or "(N rows affected)"
+              data_lines = []
+              for line in lines[2:]:
+                  stripped = line.strip()
+                  if not stripped or re.match(r'^\(\d+ rows? affected\)$', stripped):
+                      continue
+                  data_lines.append(line.rstrip('\n'))
+
+              if not data_lines:
+                  print(f"{table_name}: 0 rows (empty table)")
+                  continue
+
+              # Parse header to get column positions from the dashes line
+              header_line = lines[0].rstrip('\n')
+              headers = [h.strip() for h in header_line.split(',')]
+
+              row_count = 0
+              for line in data_lines:
+                  values = line.split(',')
+                  row_data = {}
+                  for i, col in enumerate(columns):
+                      if i < len(values):
+                          val = values[i].strip()
+                          if val == "NULL" or val == "":
+                              row_data[col] = None
+                          elif col in type_map:
+                              converter = type_map[col]
+                              row_data[col] = converter(val)
+                          else:
+                              row_data[col] = val
+                      else:
+                          row_data[col] = None
+
+                  placeholders = ", ".join(["?"] * len(columns))
+                  col_names = ", ".join(columns)
+                  db.execute(
+                      f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders})",
+                      [row_data[c] for c in columns]
+                  )
+                  row_count += 1
+
+              db.commit()
+              print(f"{table_name}: {row_count} rows imported")
+
+          # Re-enable foreign keys and verify
+          db.execute("PRAGMA foreign_keys=ON")
+          db.execute("PRAGMA foreign_key_check")
+          db.close()
+          print("\nImport complete. Foreign key check passed.")
+          PYEOF
+
+      - name: Verify row counts
+        run: |
+          echo "Verifying row counts match between SQL Server and SQLite..."
+          FAILED=0
+
+          verify_count() {
+            local TABLE=$1
+            local SQL_COUNT=$2
+            local SQLITE_COUNT
+            SQLITE_COUNT=$(sqlite3 gasoholic-migrated.db "SELECT COUNT(*) FROM $TABLE")
+            echo "$TABLE: SQL Server=$SQL_COUNT, SQLite=$SQLITE_COUNT"
+            if [ "$SQL_COUNT" != "$SQLITE_COUNT" ]; then
+              echo "  ❌ MISMATCH!"
+              FAILED=1
+            else
+              echo "  ✓ Match"
+            fi
+          }
+
+          verify_count "Users" "$Users_COUNT"
+          verify_count "Autos" "$Autos_COUNT"
+          verify_count "Fillups" "$Fillups_COUNT"
+          verify_count "MaintenanceRecords" "$MaintenanceRecords_COUNT"
+          verify_count "VerificationTokens" "$VerificationTokens_COUNT"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "Row count verification FAILED. Aborting upload."
+            exit 1
+          fi
+
+          echo ""
+          echo "All row counts verified."
+
+      # ── Step 4: Upload SQLite file to Azure Files ───────────────────────────
+      - name: Get storage account key
+        id: storage-key
+        run: |
+          KEY=$(az storage account keys list \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[0].value" -o tsv)
+          echo "::add-mask::$KEY"
+          echo "STORAGE_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Upload SQLite database to Azure Files
+        run: |
+          az storage file upload \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --account-key "$STORAGE_KEY" \
+            --share-name ${{ env.FILE_SHARE }} \
+            --source gasoholic-migrated.db \
+            --path gasoholic.db
+
+          echo "Uploaded gasoholic-migrated.db → Azure Files: ${{ env.FILE_SHARE }}/gasoholic.db"
+
+      - name: Verify upload
+        run: |
+          SIZE=$(az storage file show \
+            --account-name ${{ env.STORAGE_ACCOUNT }} \
+            --account-key "$STORAGE_KEY" \
+            --share-name ${{ env.FILE_SHARE }} \
+            --path gasoholic.db \
+            --query "properties.contentLength" -o tsv)
+          LOCAL_SIZE=$(stat --printf="%s" gasoholic-migrated.db)
+          echo "Azure Files size: $SIZE bytes"
+          echo "Local file size:  $LOCAL_SIZE bytes"
+          if [ "$SIZE" != "$LOCAL_SIZE" ]; then
+            echo "❌ Size mismatch! Upload may have failed."
+            exit 1
+          fi
+          echo "✓ Upload verified."

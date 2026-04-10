@@ -4,11 +4,10 @@
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10)
 - [Node.js + npm](https://nodejs.org/) (for Angular frontend)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) (runs SQL Server locally)
 
 ## Running locally
 
-Use `start.sh` — it handles Docker, SQL Server health checks, migrations, and server startup automatically.
+Use `start.sh` — it handles migrations and server startup automatically.
 
 ```bash
 ./start.sh           # dev mode (Angular dev server + .NET API)
@@ -17,10 +16,29 @@ Use `start.sh` — it handles Docker, SQL Server health checks, migrations, and 
 ./start.sh --help    # show all options
 ```
 
-`start.sh` requires a `.env` file at the repo root with the SQL Server SA password:
+## REISSUE AUTH SESSION WITHIN 24h
+
+good for local dev so you don't have to blow away the db
 
 ```bash
-echo 'SA_PASSWORD=YourPassword123!' > .env
+  curl -X POST http://localhost:5082/auth/resend \
+    -H "Content-Type: application/json" \
+    -d '{"email": "gas@sdir.cc"}'
+```
+
+after running curl, a magic link will print in the console output of `start.sh` — copy and open that URL to complete login and refresh your session cookie.
+
+```bash
+      ╔══════════════════════════════════════════════════════╗
+fail: VerificationEmailSender[0]
+      ║  MAGIC LINK for gas@sdir.cc
+fail: VerificationEmailSender[0]
+      ║  http://localhost:5082/auth/verify?token=7f894d5a1ea342e996d8a335c7fdcabc
+fail: VerificationEmailSender[0]
+      ╚══════════════════════════════════════════════════════╝
+
+Change url to localhost:4200 if you're running in dev mode with the Angular dev server, or keep it as localhost:5082 if you're running in prod/quick mode with .NET static file hosting.
+
 ```
 
 ### Dev mode (default)
@@ -47,37 +65,11 @@ Copy and open that URL in the browser to complete login.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `ConnectionStrings__SqlServer` | (see appsettings.Development.json) | SQL Server connection string |
+| `ConnectionStrings__Sqlite` | `Data Source=gasoholic.db` (see appsettings.Development.json) | SQLite connection string |
 | `CORS_ORIGINS` | `http://localhost:5082,https://localhost:7046` | Comma-separated allowed origins |
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Controls email sending, session behavior |
 
-In `Development` mode: magic links print to console, sessions use the SQL Server distributed cache.
-
-## Docker (SQL Server) maintenance
-
-```bash
-# Start SQL Server in background
-docker compose up -d
-
-# Stop SQL Server
-docker compose down
-
-# Stop and delete all data (volume)
-docker compose down -v
-
-# View SQL Server logs
-docker compose logs sqlserver
-
-# Check container health
-docker inspect --format='{{.State.Health.Status}}' gasoholic-sqlserver
-
-# Connect with sqlcmd (inside container)
-docker exec -it gasoholic-sqlserver \
-  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SA_PASSWORD" -C
-
-# Apply pending migrations manually
-dotnet ef database update
-```
+In `Development` mode: magic links print to console, sessions use an in-memory distributed cache.
 
 ## Build
 
@@ -94,7 +86,8 @@ docker buildx build --platform linux/arm64 -t gasoholic --load .
 
 # Run:
 docker run --platform linux/arm64 \
-  -e "ConnectionStrings__SqlServer=Server=host.docker.internal,1433;Database=$DB_NAME$;User Id=sa;Password=$SA_PASSWORD;TrustServerCertificate=True;Encrypt=False;" \
+  -e "ConnectionStrings__Sqlite=Data Source=/data/gasoholic.db" \
+  -v "$(pwd)/data:/data" \
   -p 8080:8080 gasoholic
 
 # Health check:
@@ -109,9 +102,8 @@ curl http://localhost:8080/health   # → {"status":"ok"}
 gasoholic.csproj          .NET 10 project file — packages, SDK version
 Program.cs                Entry point: DI registration, middleware, route mapping
 appsettings.json          Base config
-appsettings.Development.json  Dev-only overrides (SQL Server connection string)
-docker-compose.yml        SQL Server container for local development
-start.sh                  Dev startup script — Docker, migrations, Angular + .NET
+appsettings.Development.json  Dev-only overrides (SQLite connection string)
+start.sh                  Dev startup script — migrations, Angular + .NET
 
 Data/
   AppDbContext.cs         EF Core DbContext — all DbSets, model config
@@ -132,8 +124,7 @@ Models/
   Enums.cs                FuelType, MaintenanceType enums
 
 Migrations/               EF Core migration files — never edit by hand
-  *_InitialCreate.cs      Full schema (SQL Server-native types)
-  *_CreateSessionCache.cs SessionCache table for distributed session
+  *_InitialCreate.cs      Full schema (SQLite)
 
 client/                   Angular 17+ frontend
   src/app/
@@ -161,7 +152,7 @@ All tests live in `e2e/` (Playwright) and `Tests/` (.NET integration tests).
 
 | Layer | Location | What it tests | When to run |
 |---|---|---|---|
-| **.NET integration** | `Tests/` | API endpoints with real SQL Server | Local dev |
+| **.NET integration** | `Tests/` | API endpoints with per-test SQLite databases | Local dev |
 | **UI tests** | `e2e/tests/*.spec.ts` | Browser interactions — login, autos, fillups, RWD | Local dev |
 | **Smoke tests** | `e2e/smoke/happy-path.spec.ts` | Full API happy path end-to-end | After every deploy |
 
