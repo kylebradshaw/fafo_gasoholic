@@ -1,6 +1,6 @@
 bin/
 obj/
-.lscache
+*.lscache
 .DS_Store
 node_modules/
 e2e/node_modules/
