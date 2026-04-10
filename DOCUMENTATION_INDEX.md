@@ -25,7 +25,7 @@ Project-specific guidelines for Claude Code. Ignore if you're not using Claude.
 ### [DEPLOYMENT.md](DEPLOYMENT.md) ⭐ **Read this first for production**
 
 How to deploy and maintain the live app. Covers:
-- Local vs. production architecture (SQLite vs. Azure SQL)
+- Production architecture (SQLite on Azure Files)
 - Daily deployments (just `git push`)
 - Smoke testing
 - Database migrations
@@ -50,7 +50,7 @@ Step-by-step executable guide for provisioning Gasoholic on Azure from scratch.
 - Setting up infrastructure from scratch
 
 **What it covers:**
-- **Phase 1:** Infrastructure setup (ACR, Container Apps, Key Vault, SQL)
+- **Phase 1:** Infrastructure setup (ACR, Container Apps, Key Vault)
 - **Phase 2:** Email configuration (Azure Communication Services + custom domain)
 - **Phase 3:** Docker image build and push
 - **Phase 4:** Deployment verification (health checks, smoke tests)
@@ -132,7 +132,7 @@ Session-by-session log of work completed. Useful for:
 |-------|------|--------|
 | **Frontend** | Angular 17+, standalone components, signals | ✅ Complete |
 | **Backend** | .NET 10, Minimal API, EF Core | ✅ Complete |
-| **Database** | SQLite (local), Azure SQL Server (prod) | ✅ Complete |
+| **Database** | SQLite (all environments) | ✅ Complete |
 | **Auth** | Magic link via Azure Communication Services | ✅ Complete |
 | **PWA** | Service worker, offline sync, push notifications | ✅ Complete |
 | **Hosting** | Azure Container Apps + ACR | ✅ Complete |
@@ -225,7 +225,6 @@ Key architectural decisions and why they were made:
 |---|---|---|
 | Angular standalone components | Cleaner, no NgModules | [PLAN.md — Task 21](PLAN.md) |
 | IndexedDB for offline queue (not LocalStorage) | 50+ MB capacity vs 5–10 MB limit | [PWA_OFFLINE_FEATURES.md](PWA_OFFLINE_FEATURES.md) |
-| Azure SQL in West US 2 (not East US) | East US quota exhausted at signup | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | Service worker `network-first` caching | Data freshness > speed; fresh > stale | [PWA_OFFLINE_FEATURES.md](PWA_OFFLINE_FEATURES.md) |
 | BroadcastChannel for cross-tab sync | Event-driven, not polling-based | [PWA_OFFLINE_FEATURES.md](PWA_OFFLINE_FEATURES.md) |
 
@@ -312,6 +311,6 @@ Keeping docs up to date:
 
 ---
 
-**Last updated:** 2026-03-27
+**Last updated:** 2026-04-10
 
 Questions? Check the relevant doc above, then file a GitHub issue.

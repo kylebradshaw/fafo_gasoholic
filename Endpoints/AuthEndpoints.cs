@@ -47,7 +47,7 @@ public static class AuthEndpoints
             });
             await db.SaveChangesAsync();
 
-            var baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+            var baseUrl = GetBaseUrl(ctx);
             await emailSender.SendMagicLinkAsync(user.Email, token, baseUrl);
 
             return Results.Accepted(null, new { status = "pending" });
@@ -116,7 +116,7 @@ public static class AuthEndpoints
             });
             await db.SaveChangesAsync();
 
-            var baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+            var baseUrl = GetBaseUrl(ctx);
             await emailSender.SendMagicLinkAsync(user.Email, token, baseUrl);
 
             return Results.Accepted(null, new { status = "pending" });
@@ -154,6 +154,21 @@ public static class AuthEndpoints
 
             return Results.Ok(new { email = user.Email });
         });
+    }
+
+    private static string GetBaseUrl(HttpContext ctx)
+    {
+        // In development, Angular dev server runs on port 4200 and proxies to .NET.
+        // Magic links must point to the Angular origin so the session cookie is set
+        // on the same origin the browser is using.
+        var origin = ctx.Request.Headers.Origin.FirstOrDefault()
+                  ?? ctx.Request.Headers.Referer.FirstOrDefault();
+        if (origin is not null)
+        {
+            var uri = new Uri(origin);
+            return $"{uri.Scheme}://{uri.Authority}";
+        }
+        return $"{ctx.Request.Scheme}://{ctx.Request.Host}";
     }
 
     public static int? GetUserId(this HttpContext ctx) =>
