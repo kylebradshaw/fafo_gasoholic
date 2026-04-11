@@ -121,9 +121,11 @@ public static class AuthEndpoints
                 return Results.Json(new { error = "too_many_requests" }, statusCode: 429);
 
             // Invalidate old unused tokens (mark as used so they're still counted in rate limit)
-            await db.VerificationTokens
+            var unusedTokens = await db.VerificationTokens
                 .Where(t => t.UserId == user.Id && t.UsedAt == null)
-                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsedAt, DateTime.UtcNow));
+                .ToListAsync();
+            foreach (var t in unusedTokens)
+                t.UsedAt = DateTime.UtcNow;
 
             var token = Guid.NewGuid().ToString("N");
             db.VerificationTokens.Add(new VerificationToken

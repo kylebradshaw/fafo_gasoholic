@@ -38,14 +38,18 @@ public class VerificationCleanupService : BackgroundService
         // Delete stale expired tokens
         var staleTokens = await db.VerificationTokens
             .Where(t => t.ExpiresAt < cutoff)
-            .ExecuteDeleteAsync();
+            .ToListAsync();
+        db.VerificationTokens.RemoveRange(staleTokens);
 
         // Delete unverified users who never clicked their link after 7 days
         var staleUsers = await db.Users
             .Where(u => !u.EmailVerified && u.CreatedAt < cutoff)
-            .ExecuteDeleteAsync();
+            .ToListAsync();
+        db.Users.RemoveRange(staleUsers);
 
-        if (staleTokens > 0 || staleUsers > 0)
-            _logger.LogInformation("Cleanup: removed {T} tokens, {U} unverified users", staleTokens, staleUsers);
+        await db.SaveChangesAsync();
+
+        if (staleTokens.Count > 0 || staleUsers.Count > 0)
+            _logger.LogInformation("Cleanup: removed {T} tokens, {U} unverified users", staleTokens.Count, staleUsers.Count);
     }
 }
