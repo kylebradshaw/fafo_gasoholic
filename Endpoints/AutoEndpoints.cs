@@ -10,10 +10,11 @@ public static class AutoEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var autos = await db.Autos
+            var autos = (await db.Autos
                 .Where(a => a.UserId == userId)
+                .ToListAsync())
                 .OrderBy(a => a.Brand).ThenBy(a => a.Model)
-                .ToListAsync();
+                .ToList();
 
             var result = new List<object>(autos.Count);
             foreach (var a in autos)
