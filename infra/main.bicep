@@ -68,7 +68,85 @@ resource acsService 'Microsoft.Communication/communicationServices@2023-04-01' =
   }
 }
 
-// ── Key Vault (stores ACS connection string) ──────────────────────────────────
+// ── Cosmos DB (serverless) ───────────────────────────────────────────────────
+
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
+  name: '${appName}-cosmos'
+  location: location
+  kind: 'GlobalDocumentDB'
+  properties: {
+    databaseAccountOfferType: 'Standard'
+    consistencyPolicy: { defaultConsistencyLevel: 'Session' }
+    locations: [{ locationName: location, failoverPriority: 0 }]
+    capabilities: [{ name: 'EnableServerless' }]
+  }
+}
+
+resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' = {
+  parent: cosmosAccount
+  name: 'gasoholic'
+  properties: {
+    resource: { id: 'gasoholic' }
+  }
+}
+
+resource containerUsers 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'Users'
+  properties: {
+    resource: {
+      id: 'Users'
+      partitionKey: { paths: [ '/id' ], kind: 'Hash' }
+    }
+  }
+}
+
+resource containerAutos 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'Autos'
+  properties: {
+    resource: {
+      id: 'Autos'
+      partitionKey: { paths: [ '/userId' ], kind: 'Hash' }
+    }
+  }
+}
+
+resource containerFillups 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'Fillups'
+  properties: {
+    resource: {
+      id: 'Fillups'
+      partitionKey: { paths: [ '/autoId' ], kind: 'Hash' }
+    }
+  }
+}
+
+resource containerMaintenance 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'Maintenance'
+  properties: {
+    resource: {
+      id: 'Maintenance'
+      partitionKey: { paths: [ '/autoId' ], kind: 'Hash' }
+    }
+  }
+}
+
+resource containerVerificationTokens 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'VerificationTokens'
+  properties: {
+    resource: {
+      id: 'VerificationTokens'
+      partitionKey: { paths: [ '/userId' ], kind: 'Hash' }
+      defaultTtl: 604800
+    }
+  }
+}
+
+// ── Key Vault (stores ACS connection string + Cosmos connection) ─────────────
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: kvName
@@ -88,6 +166,15 @@ resource acsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'AcsConnection'
   properties: {
     value: acsService.listKeys().primaryConnectionString
+  }
+}
+
+// Cosmos DB connection string — Container App reads it via managed identity
+resource cosmosSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'CosmosConnection'
+  properties: {
+    value: cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
   }
 }
 
@@ -144,6 +231,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           identity: 'system'
         }
         {
+          name: 'cosmos-connection'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/CosmosConnection'
+          identity: 'system'
+        }
+        {
           name: 'smoke-test-secret'
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/SmokeTestSecret'
           identity: 'system'
@@ -156,7 +248,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: appName
           image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           env: [
-            { name: 'ConnectionStrings__Sqlite',               value: 'Data Source=/data/gasoholic.db' }
+            { name: 'ConnectionStrings__Cosmos',                secretRef: 'cosmos-connection' }
             { name: 'ConnectionStrings__ACS',                  secretRef: 'acs-connection' }
             { name: 'AcsSenderDomain',                         secretRef: 'acs-sender-domain' }
             { name: 'CORS_ORIGINS',                            value: 'https://${appName}.${containerEnv.properties.defaultDomain},https://gas.sdir.cc' }
