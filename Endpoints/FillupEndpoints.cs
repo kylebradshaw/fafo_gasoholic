@@ -10,9 +10,8 @@ public static class FillupEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var fillups = await db.Fillups
                 .Where(f => f.AutoId == autoId)
@@ -32,9 +31,8 @@ public static class FillupEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var fillup = new Fillup
             {
@@ -62,9 +60,8 @@ public static class FillupEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var fillup = await db.Fillups.FirstOrDefaultAsync(f => f.Id == id && f.AutoId == autoId);
             if (fillup is null) return Results.NotFound();
@@ -89,9 +86,8 @@ public static class FillupEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var fillup = await db.Fillups.FirstOrDefaultAsync(f => f.Id == id && f.AutoId == autoId);
             if (fillup is null) return Results.NotFound();

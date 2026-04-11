@@ -10,9 +10,8 @@ public static class MaintenanceEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var records = await db.MaintenanceRecords
                 .Where(m => m.AutoId == autoId)
@@ -36,9 +35,8 @@ public static class MaintenanceEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var record = new MaintenanceRecord
             {
@@ -61,9 +59,8 @@ public static class MaintenanceEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var record = await db.MaintenanceRecords.FirstOrDefaultAsync(m => m.Id == id && m.AutoId == autoId);
             if (record is null) return Results.NotFound();
@@ -84,9 +81,8 @@ public static class MaintenanceEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(autoId);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == autoId && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var record = await db.MaintenanceRecords.FirstOrDefaultAsync(m => m.Id == id && m.AutoId == autoId);
             if (record is null) return Results.NotFound();

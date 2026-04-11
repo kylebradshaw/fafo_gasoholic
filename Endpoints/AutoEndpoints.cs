@@ -13,19 +13,25 @@ public static class AutoEndpoints
             var autos = await db.Autos
                 .Where(a => a.UserId == userId)
                 .OrderBy(a => a.Brand).ThenBy(a => a.Model)
-                .Select(a => new
-                {
-                    a.Id, a.Brand, a.Model, a.Plate, a.Odometer,
-                    LatestFillupAt = db.Fillups
-                        .Where(f => f.AutoId == a.Id)
-                        .Max(f => (DateTime?)f.FilledAt),
-                    LatestFillupOdometer = db.Fillups
-                        .Where(f => f.AutoId == a.Id)
-                        .Max(f => (decimal?)f.Odometer)
-                })
                 .ToListAsync();
 
-            return Results.Ok(autos);
+            var result = new List<object>(autos.Count);
+            foreach (var a in autos)
+            {
+                var latest = await db.Fillups
+                    .Where(f => f.AutoId == a.Id)
+                    .OrderByDescending(f => f.FilledAt)
+                    .Select(f => new { f.FilledAt, f.Odometer })
+                    .FirstOrDefaultAsync();
+                result.Add(new
+                {
+                    a.Id, a.Brand, a.Model, a.Plate, a.Odometer,
+                    LatestFillupAt = (DateTime?)latest?.FilledAt,
+                    LatestFillupOdometer = (decimal?)latest?.Odometer
+                });
+            }
+
+            return Results.Ok(result);
         });
 
         app.MapPost("/api/autos", async (AutoRequest req, HttpContext ctx, AppDbContext db) =>
@@ -55,9 +61,8 @@ public static class AutoEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(id);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             auto.Brand = req.Brand;
             auto.Model = req.Model;
@@ -74,9 +79,8 @@ public static class AutoEndpoints
             if (auth is not null) return auth;
 
             var userId = ctx.GetUserId()!;
-            var auto = await db.Autos.FindAsync(id);
+            var auto = await db.Autos.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
             if (auto is null) return Results.NotFound();
-            if (auto.UserId != userId) return Results.StatusCode(403);
 
             var fillups = await db.Fillups.Where(f => f.AutoId == id).ToListAsync();
             db.Fillups.RemoveRange(fillups);
