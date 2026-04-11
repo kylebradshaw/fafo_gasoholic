@@ -31,7 +31,7 @@
       "Bash(dig gas.sdir.cc TXT +short)",
       "Bash(dig gas.sdir.cc A +short)",
       "Bash(dotnet ef:*)",
-      "Bash(BASE_URL=https://gas.sdir.cc SMOKE_TEST_SECRET=b6f4f4c9324b23343361d7494365db93 npm run test:smoke 2>&1)",
+      "Bash(BASE_URL=https://gas.sdir.cc SMOKE_TEST_SECRET=$(az keyvault secret show --vault-name gasoholic-kv --name SmokeTestSecret --query value -o tsv))",
       "WebFetch(domain:registry.npmjs.org)",
       "Bash(sudo chown:*)",
       "Bash(npx skills:*)",

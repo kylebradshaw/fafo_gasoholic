@@ -35,9 +35,14 @@ public static class AuthEndpoints
             var pendingStatus = user.EmailVerified ? "pending_reauth" : "pending_verification";
 
             // If an active (unused, non-expired) token already exists, don't send another email.
+            // Use Take(1)+ToListAsync rather than AnyAsync to sidestep an EF Cosmos 10.0.5
+            // translation bug ("Identifier 'root' could not be resolved") on this predicate shape.
+            var userIdForToken = user.Id;
             var now = DateTime.UtcNow;
-            var hasActiveToken = await db.VerificationTokens
-                .AnyAsync(t => t.UserId == user.Id && t.UsedAt == null && t.ExpiresAt > now);
+            var hasActiveToken = (await db.VerificationTokens
+                .Where(t => t.UserId == userIdForToken && t.UsedAt == null && t.ExpiresAt > now)
+                .Take(1)
+                .ToListAsync()).Count > 0;
 
             if (hasActiveToken)
                 return Results.Accepted(null, new { status = pendingStatus });
@@ -106,8 +111,11 @@ public static class AuthEndpoints
             if (user.EmailVerified)
             {
                 var now = DateTime.UtcNow;
-                var hasActiveTokenForReauth = await db.VerificationTokens
-                    .AnyAsync(t => t.UserId == user.Id && t.UsedAt == null && t.ExpiresAt > now);
+                var userIdForReauth = user.Id;
+                var hasActiveTokenForReauth = (await db.VerificationTokens
+                    .Where(t => t.UserId == userIdForReauth && t.UsedAt == null && t.ExpiresAt > now)
+                    .Take(1)
+                    .ToListAsync()).Count > 0;
                 if (!hasActiveTokenForReauth)
                     return Results.Ok(new { status = "ok" });
             }
