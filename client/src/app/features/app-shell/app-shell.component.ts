@@ -189,7 +189,7 @@ export class AppShellComponent implements OnInit {
   private toastService = inject(ToastService);
   private router = inject(Router);
 
-  selectedAutoId = signal<number | string>('');
+  selectedAutoId = signal<string>('');
 
   async ngOnInit(): Promise<void> {
     await this.autosService.loadAutos();
@@ -199,8 +199,8 @@ export class AppShellComponent implements OnInit {
   }
 
   onAutoChange() {
-    const id = parseInt(String(this.selectedAutoId()), 10);
-    if (!isNaN(id)) {
+    const id = this.selectedAutoId();
+    if (id) {
       this.autosService.setCurrentAuto(id);
     }
   }
