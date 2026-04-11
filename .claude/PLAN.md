@@ -87,8 +87,8 @@ DELETE /api/autos/{autoId}/fillups/{id}
 
 ## Frontend Pages
 
-1. **`/` (index.html)** — Login: email input + submit → redirect to `/app.html`
-2. **`/app.html`** — Shell: nav with auto selector dropdown + logout link
+1. **`/` (index.html)** — Login: email input + submit → redirect to `/app`
+2. **`/app`** — Shell: nav with auto selector dropdown + logout link
    - **Log tab** (default): fillup table, newest first, `+ Add Fillup` button
    - **Autos tab**: auto cards with edit/delete, `+ Add Auto` button
 3. **Modals / inline forms** for add/edit of both Autos and Fillups
@@ -212,13 +212,13 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 
 **Work:**
 - Clean single-column centered form: email input + "Sign In" button
-- On submit: `POST /auth/login`, then redirect to `/app.html`
+- On submit: `POST /auth/login`, then redirect to `/app`
 - On load: `GET /auth/me` — if already logged in, redirect immediately
 - RWD: looks correct on 375px and 1280px
 
 **Acceptance criteria:**
-- [x] Entering email and clicking Sign In redirects to `/app.html`
-- [x] Visiting `index.html` when already logged in skips to `/app.html`
+- [x] Entering email and clicking Sign In redirects to `/app`
+- [x] Visiting `index.html` when already logged in skips to `/app`
 - [x] Form is usable on mobile (375px width) without horizontal scroll
 - [x] git commit created: `feat: task 6 — login page`
 
@@ -226,7 +226,7 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 
 ---
 
-### Task 7 — App Shell + Autos Management (`wwwroot/app.html`)
+### Task 7 — App Shell + Autos Management (`wwwroot/app`)
 
 **Work:**
 - Nav bar: app name, auto selector `<select>`, logout button
@@ -241,7 +241,7 @@ Browser `navigator.geolocation.getCurrentPosition()` → coordinates stored → 
 - [x] Editing an auto updates the card
 - [x] Deleting an auto removes it from list and selector
 - [x] Logout clears session and redirects to login
-- [x] Unauthenticated visit to `/app.html` redirects to `index.html`
+- [x] Unauthenticated visit to `/app` redirects to `index.html`
 - [x] git commit created: `feat: task 7 — app shell and autos management`
 
 **Task done when:** all criteria above are checked `[x]` (verified via Playwright e2e test) and the git commit exists — then move on to the next task with unchecked criteria.
@@ -438,7 +438,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
      - Look up token; reject if not found, expired (`ExpiresAt < now`), or already used (`UsedAt != null`)
      - Mark token `UsedAt = now`, set `User.EmailVerified = true`
      - Create session; set cookie `SameSite=Strict, HttpOnly, Secure, MaxAge=30days` (persistent)
-     - Redirect to `/app.html`
+     - Redirect to `/app`
    - `POST /auth/resend` — new endpoint:
      - Body: `{ email }`
      - Rate limit: count tokens created for this email in last 1hr; if ≥ 3, return 429 `{"error":"too_many_requests"}`
@@ -467,11 +467,11 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 **Acceptance criteria:**
 - [x] New user login → 202 `{"status":"pending"}`; magic link email arrives via ACS
-- [x] Clicking magic link sets 30-day persistent cookie and redirects to `/app.html`
+- [x] Clicking magic link sets 30-day persistent cookie and redirects to `/app`
 - [x] Clicking same magic link a second time → 400 (token already used)
 - [x] Token expired after 24hr → `GET /auth/verify` returns 400 with `{"error":"token_expired"}`
 - [x] Existing users in DB are all `EmailVerified = true` after migration — no re-verification required
-- [x] Unverified user cannot reach `/app.html` (hard gate redirects to `index.html`)
+- [x] Unverified user cannot reach `/app` (hard gate redirects to `index.html`)
 - [x] 4th resend within 1 hour → 429 `{"error":"too_many_requests"}`; button shows cooldown message
 - [x] Unverified user created 8 days ago → deleted by cleanup service
 - [x] Logout clears session; subsequent `GET /auth/me` returns 401
@@ -632,7 +632,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
    - This ensures the SQL Server `SessionCache` entry lives as long as the cookie (currently defaults to 20 minutes, causing premature eviction)
    - Add `options.Cookie.SameSite = SameSiteMode.Lax` explicitly for clarity (default behavior, but makes intent visible)
 
-3. **Faster frontend render — `wwwroot/app.html`**
+3. **Faster frontend render — `wwwroot/app`**
    - **Immediate shell**: render nav bar, tabs, and a loading skeleton/spinner *before* any fetch calls
    - **Parallel fetches**: fire `/auth/me` and `/api/autos` simultaneously on page load instead of sequentially (auth check → then load autos → then load fillups)
    - **Optimistic rendering**: show the app shell immediately; if auth fails, redirect; if auth succeeds, the autos data is already in flight
@@ -832,7 +832,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 
 ## Task 21 — Angular 17+ PWA Migration
 
-**Goal:** Migrate the existing single-file vanilla HTML/CSS/JS frontend (`wwwroot/app.html`) to a full Angular 17+ standalone PWA. Gain component architecture with TypeScript DX, installability (A2HS), offline caching (service worker), background sync (offline fillup queue → auto-retry), and push notifications. Use a full rewrite strategy (not hybrid). Angular app scaffolds into `/client`, builds into `wwwroot/` via a new multi-stage Dockerfile stage.
+**Goal:** Migrate the existing single-file vanilla HTML/CSS/JS frontend (`wwwroot/app`) to a full Angular 17+ standalone PWA. Gain component architecture with TypeScript DX, installability (A2HS), offline caching (service worker), background sync (offline fillup queue → auto-retry), and push notifications. Use a full rewrite strategy (not hybrid). Angular app scaffolds into `/client`, builds into `wwwroot/` via a new multi-stage Dockerfile stage.
 
 **Key decisions:**
 | Decision | Rationale |
@@ -852,7 +852,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
 - `Program.cs` — add `app.MapFallbackToFile("index.html")` after `UseStaticFiles()`
 - `wwwroot/` — replaced by Angular `ng build` output
 - `wwwroot/manifest.json` — merged into Angular's generated `manifest.webmanifest`
-- `e2e/tests/*.spec.ts` — update URLs (`/app.html` → `/app/log`) and selectors
+- `e2e/tests/*.spec.ts` — update URLs (`/app` → `/app/log`) and selectors
 - `e2e/smoke/happy-path.spec.ts` — same URL/selector updates
 
 **New files/directories:**
@@ -927,7 +927,7 @@ quota. Bicep simplified to: ACR + Container Apps Environment + Container App onl
     - Verify `npm test` in `/client` exits 0 with all specs passing
 
 11. **Task 21.11: Playwright E2E Updates**
-    - Replace `/app.html` URLs → `/app/log` or `/app/autos` throughout test suite
+    - Replace `/app` URLs → `/app/log` or `/app/autos` throughout test suite
     - Preserve all form `id` attributes in Angular templates (zero-change for modal selectors)
     - Add `data-testid="tab-log"` / `data-testid="tab-autos"` to tab buttons
     - Create new `e2e/tests/pwa.spec.ts`: verify SW registered, offline fallback renders app shell

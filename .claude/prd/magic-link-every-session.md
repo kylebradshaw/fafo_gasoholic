@@ -22,7 +22,7 @@ Require a magic link for every new session establishment, not just first-time ve
 3. As a verified user re-authenticating, I want to see a message like "Check your email to sign back in" (distinct from first-time verification wording), so that I understand why I'm being asked to verify again
 4. As a new user signing up, I want to receive a magic link to verify my email, so that my account is tied to a real email address I own
 5. As a new user, I want to see a message like "Check your email to verify your account," so that I understand what's happening
-6. As a user who clicked a valid magic link, I want to be redirected to `/app.html` with a 30-day session, regardless of whether this was first-time verification or re-authentication
+6. As a user who clicked a valid magic link, I want to be redirected to `/app` with a 30-day session, regardless of whether this was first-time verification or re-authentication
 7. As a user, I want my session to last 30 days before I'm required to re-authenticate, so that I'm not constantly interrupted by email verification
 8. As an attacker who knows a user's email, I should NOT be able to establish a session without access to that user's email inbox
 9. As a verified user re-authenticating, I want to be able to use `/auth/resend` to get a new magic link if I didn't receive the first one
@@ -41,7 +41,7 @@ Require a magic link for every new session establishment, not just first-time ve
 - **Active session check**: The login endpoint should check for an existing valid session (via `Session.GetInt32("userId")`) before sending a magic link. If a session exists and the user is verified, return `"ok"` immediately.
 - **Cleanup service**: Stays at 7-day cutoff for unverified users and expired tokens. No change needed.
 - **Dev-login endpoint**: `/auth/dev-login` (smoke test endpoint) continues to bypass magic link — it's gated by `SMOKE_TEST_SECRET` header and only used in tests and smoke tests.
-- **Verify endpoint**: No changes to `/auth/verify` — it already sets `EmailVerified = true`, establishes a session, and redirects to `/app.html`.
+- **Verify endpoint**: No changes to `/auth/verify` — it already sets `EmailVerified = true`, establishes a session, and redirects to `/app`.
 - **Frontend**: Must handle the new `pending_reauth` status and display appropriate messaging. The `pending_verification` status replaces the current `pending` status.
 
 ## Testing Decisions

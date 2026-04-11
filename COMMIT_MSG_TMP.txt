@@ -1,0 +1,51 @@
+cosmosdb plan phase 1 slice: strip SQLite, wire Cosmos provider
+
+Single-task slice of phase 1 in .claude/plans/cosmosdb.md. Rips SQLite
+out of the project and wires the EF Core Cosmos provider into
+AppDbContext + Program.cs, with InMemory as the test/dev fallback so
+the build/tests stay functional before the emulator work lands.
+
+Decisions:
+- InMemory provider for Testing env (per-factory unique db name) and
+  for Development until the emulator startup script lands. Cosmos
+  provider is used when ConnectionStrings:Cosmos is set (Production).
+- AppDbContext.OnModelCreating now declares ToContainer + HasPartitionKey
+  per the plan: User /id, Auto /userId, Fillup /autoId,
+  MaintenanceRecord /autoId, VerificationToken /userId. Removed
+  OnDelete(Cascade) and unique indexes (Cosmos has neither).
+- Cascade deletes implemented explicitly in endpoint code:
+  AutoEndpoints DELETE drops Fillups + MaintenanceRecords first;
+  SmokeTestEndpoints dev-cleanup drops Fillups -> Maintenance -> Autos
+  -> VerificationTokens before removing the user.
+- Replaced db.Database.Migrate() + WAL pragma with EnsureCreatedAsync.
+
+Files changed:
+- gasoholic.csproj, Tests/Tests.csproj: swap Sqlite for Cosmos+InMemory
+- Data/AppDbContext.cs: Cosmos model config
+- Data/AppDbContextFactory.cs: deleted (no design-time migrations)
+- Migrations/, gasoholic.db, reset-db.sh: deleted
+- Program.cs: env-branched DbContext registration, EnsureCreatedAsync
+- appsettings.{Development,Testing,Production}.json: drop Sqlite, add
+  Cosmos emulator endpoint to Development
+- Tests/GasoholicWebAppFactory.cs: InMemory provider override
+- Tests/IntegrationTestBase.cs: comment update
+- Endpoints/AutoEndpoints.cs, Endpoints/SmokeTestEndpoints.cs:
+  explicit cascade
+- .claude/plans/cosmosdb.md, .claude/prd/cosmosdb.md: track new plan/PRD
+
+Blockers / notes for next iteration:
+- Could not run dotnet build / dotnet test in this sandbox (no dotnet
+  binary). Code review only - next session must run the suite locally.
+- FAFO.md update was blocked by sandbox file permissions; needs to be
+  appended manually with the contents of this commit body.
+- Cosmos provider does not auto-generate int PKs; the int Id models
+  will need a follow-up reshape (string id + value generator) before
+  any real Cosmos integration runs.
+- ExecuteUpdateAsync / ExecuteDeleteAsync calls in AuthEndpoints and
+  VerificationCleanupService are unsupported by the Cosmos provider;
+  must be rewritten in a later phase 1 / phase 2 task.
+- Cosmos emulator docker-compose / start.sh integration is still TODO
+  (phase 1 acceptance criterion 3-7).
+- VerificationCleanupService deletion belongs to phase 2.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>

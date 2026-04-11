@@ -13,7 +13,7 @@ Durable decisions that apply across all phases:
   - `"ok"` — active session exists, user is authenticated
   - `"pending_verification"` — new user, magic link sent (replaces current `"pending"`)
   - `"pending_reauth"` — verified user, session expired, magic link sent (new)
-- **`/auth/verify` endpoint**: No changes — already sets `EmailVerified = true`, establishes session, redirects to `/app.html`
+- **`/auth/verify` endpoint**: No changes — already sets `EmailVerified = true`, establishes session, redirects to `/app`
 - **`/auth/dev-login` endpoint**: No changes — continues to bypass magic link, gated by `SMOKE_TEST_SECRET`
 - **Cleanup service**: Stays at 7-day cutoff — no change needed
 - **Rate limiting**: Existing 4 tokens/hour limit applies to both verification and re-auth flows
@@ -34,7 +34,7 @@ Change `/auth/login` so that verified users without an active session receive a 
 - [x] Verified user with an active session: `/auth/login` returns `200` with `status: "ok"` and does NOT send a magic link
 - [x] New user: `/auth/login` returns `202` with `status: "pending_verification"` and sends a magic link
 - [x] Unverified user with an active token: `/auth/login` returns `202` with `status: "pending_verification"` and does NOT send another magic link
-- [x] Clicking the magic link from a re-auth flow establishes a session and redirects to `/app.html`
+- [x] Clicking the magic link from a re-auth flow establishes a session and redirects to `/app`
 
 ---
 

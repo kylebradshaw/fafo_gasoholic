@@ -88,7 +88,7 @@ public static class AuthEndpoints
             }
 
             ctx.Session.SetInt32(UserIdKey, vt.User.Id);
-            return Results.Redirect("/app.html");
+            return Results.Redirect("/app");
         });
 
         app.MapPost("/auth/resend", async (ResendRequest req, AppDbContext db, IVerificationEmailSender emailSender, HttpContext ctx) =>

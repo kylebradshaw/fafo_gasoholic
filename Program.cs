@@ -11,6 +11,11 @@ if (builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseInMemoryDatabase($"gasoholic-{Guid.NewGuid():N}"));
 }
+else if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseInMemoryDatabase("gasoholic-dev"));
+}
 else
 {
     var connStr = builder.Configuration.GetConnectionString("Cosmos")

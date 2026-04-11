@@ -126,12 +126,6 @@ check_prerequisites() {
   echo ""
 }
 
-apply_migrations() {
-  echo -e "${BLUE}Applying database migrations...${NC}"
-  dotnet ef database update
-  echo -e "${GREEN}✓ Migrations applied${NC}"
-  echo ""
-}
 
 cleanup() {
   echo ""
@@ -171,7 +165,7 @@ start_dev_mode() {
 
   # Start .NET in background
   echo -e "${BLUE}Starting .NET backend...${NC}"
-  dotnet run &
+  dotnet run --project gasoholic.csproj &
   DOTNET_PID=$!
 
   # Give .NET a moment to start
@@ -206,7 +200,7 @@ start_prod_mode() {
   echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
   echo ""
 
-  dotnet run
+  dotnet run --project gasoholic.csproj
 }
 
 start_quick_mode() {
@@ -226,7 +220,7 @@ start_quick_mode() {
   echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
   echo ""
 
-  dotnet run
+  dotnet run --project gasoholic.csproj
 }
 
 main() {
@@ -237,7 +231,6 @@ main() {
   echo ""
 
   check_prerequisites
-  apply_migrations
 
   case $MODE in
     dev)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`gasoholic` is a fuel fillup tracker — .NET 10 Minimal API + SQLite (EF Core) backend, Vanilla HTML/JS frontend.
+`gasoholic` is a fuel fillup tracker — .NET 10 Minimal API + Cosmos DB (EF Core Cosmos provider) backend, Angular frontend in `client/`.
 
 Session interaction log: `.claude/FAFO.md`
 

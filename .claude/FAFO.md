@@ -42,7 +42,7 @@ This file is appended with every user interaction in each Claude Code session.
   - `infra/main.bicep`: `minReplicas: 0` → `1` — eliminates 5-10s cold start
   - `Program.cs`: added `DefaultSlidingExpiration = 30 days` on SQL Server distributed session cache (was defaulting to 20 min, causing premature session eviction despite 30-day cookie); added explicit `SameSite = Lax`
   - `wwwroot/index.html`: login form renders immediately; `/auth/me` check runs non-blocking in background
-  - `wwwroot/app.html`: app shell + shimmer skeleton loading states render instantly; auth check and `/api/autos` fire in parallel via `Promise.all` (was sequential waterfall)
+  - `wwwroot/app`: app shell + shimmer skeleton loading states render instantly; auth check and `/api/autos` fire in parallel via `Promise.all` (was sequential waterfall)
 - User requested FAFO.md logging after every plan task completion; added instruction to CLAUDE.md
 
 ## Session: 2026-03-23
@@ -225,8 +225,8 @@ This file is appended with every user interaction in each Claude Code session.
     - `favicon.ico` and `3rdpartylicenses.txt`
   - Build validates complete Angular 17+ structure with all components, services, guards
 - **E2E tests updated:**
-  - All test files migrated from vanilla `/app.html` routes to Angular routes:
-    - `e2e/tests/login.spec.ts`: `/app.html` → `/app/log` (auth flow)
+  - All test files migrated from vanilla `/app` routes to Angular routes:
+    - `e2e/tests/login.spec.ts`: `/app` → `/app/log` (auth flow)
     - `e2e/tests/app-shell.spec.ts`: All autos management tests → `/app/autos`
     - `e2e/tests/fillup-log.spec.ts`: Fillup operations → `/app/log`
     - `e2e/tests/fillup-modal.spec.ts`: Modal interactions → `/app/log`
@@ -537,3 +537,23 @@ Closes the security gap where any visitor who knew or guessed a verified user's 
 ### Note on production state
 
 Plan execution made code changes only; production is still broken (separate issue from earlier this session — the live container app was never wired to SQLite, no volume mount, env vars still reference deleted SQL Server). That fix is pending user direction and is unrelated to this plan.
+
+## 2026-04-11
+
+### Cosmos DB migration — Phase 1 slice: strip SQLite, wire Cosmos provider
+
+Commit `90a1975`. Executed the first slice of `.claude/plans/cosmosdb.md` Phase 1.
+
+**Changes:**
+- `gasoholic.csproj`, `Tests/Tests.csproj`: replaced `Microsoft.EntityFrameworkCore.Sqlite` with `Microsoft.EntityFrameworkCore.Cosmos` + `Microsoft.EntityFrameworkCore.InMemory`.
+- `Data/AppDbContext.cs`: rewrote `OnModelCreating` for Cosmos — `ToContainer` + `HasPartitionKey` per plan (User `/id`, Auto `/userId`, Fillup `/autoId`, MaintenanceRecord `/autoId`, VerificationToken `/userId`). Removed cascade delete config and unique indexes.
+- `Data/AppDbContextFactory.cs`: deleted (no design-time migrations needed).
+- `Migrations/`, `gasoholic.db`, `reset-db.sh`: deleted.
+- `Program.cs`: branched DbContext registration by environment (InMemory for Testing, Cosmos for others). Replaced `db.Database.Migrate()` + WAL pragma with `EnsureCreatedAsync`.
+- `Endpoints/AutoEndpoints.cs`: explicit cascade delete — removes fillups + maintenance before deleting auto.
+- `Endpoints/SmokeTestEndpoints.cs`: explicit cascade in dev-cleanup — fillups → maintenance → autos → tokens → user.
+- `Tests/GasoholicWebAppFactory.cs`: switched to `UseInMemoryDatabase` with per-factory unique names.
+- `appsettings.{Development,Testing,Production}.json`: dropped SQLite connection strings, added Cosmos emulator endpoint to Development.
+- `.claude/plans/cosmosdb.md`, `.claude/prd/cosmosdb.md`: added plan and PRD to repo.
+
+**Known follow-ups:** no `dotnet` in sandbox so build/tests not verified; int PK model reshape needed for real Cosmos; `ExecuteUpdateAsync`/`ExecuteDeleteAsync` in auth endpoints need rewriting; emulator Docker integration and `VerificationCleanupService` deletion deferred to later tasks.

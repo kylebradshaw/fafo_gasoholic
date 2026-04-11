@@ -259,9 +259,9 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
 
         var resp = await client.GetAsync($"/auth/verify?token={token}");
 
-        // Expect redirect to /app.html (we set AllowAutoRedirect = false)
+        // Expect redirect to /app (we set AllowAutoRedirect = false)
         Assert.Equal(HttpStatusCode.Redirect, resp.StatusCode);
-        Assert.Contains("/app.html", resp.Headers.Location?.ToString() ?? "");
+        Assert.Contains("/app", resp.Headers.Location?.ToString() ?? "");
     }
 
     [Fact]
