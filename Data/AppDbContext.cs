@@ -23,12 +23,14 @@ public class AppDbContext : DbContext
         {
             b.ToContainer("Autos");
             b.HasPartitionKey(a => a.UserId);
+            b.Property(a => a.UserId).ToJsonProperty("userId");
         });
 
         modelBuilder.Entity<Fillup>(b =>
         {
             b.ToContainer("Fillups");
             b.HasPartitionKey(f => f.AutoId);
+            b.Property(f => f.AutoId).ToJsonProperty("autoId");
             b.Property(f => f.FuelType).HasConversion<string>();
         });
 
@@ -36,6 +38,7 @@ public class AppDbContext : DbContext
         {
             b.ToContainer("Maintenance");
             b.HasPartitionKey(m => m.AutoId);
+            b.Property(m => m.AutoId).ToJsonProperty("autoId");
             b.Property(m => m.Type).HasConversion<string>();
         });
 
@@ -43,6 +46,7 @@ public class AppDbContext : DbContext
         {
             b.ToContainer("VerificationTokens");
             b.HasPartitionKey(vt => vt.UserId);
+            b.Property(vt => vt.UserId).ToJsonProperty("userId");
             b.HasDefaultTimeToLive(7 * 24 * 60 * 60);
         });
     }
