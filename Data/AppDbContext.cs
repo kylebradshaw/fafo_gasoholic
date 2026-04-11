@@ -47,6 +47,7 @@ public class AppDbContext : DbContext
         {
             b.ToContainer("VerificationTokens");
             b.HasPartitionKey(vt => vt.UserId);
+            b.HasDefaultTimeToLive(7 * 24 * 60 * 60);
         });
     }
 }
