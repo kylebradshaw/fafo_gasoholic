@@ -13,8 +13,20 @@ if (builder.Environment.IsEnvironment("Testing"))
 }
 else if (builder.Environment.IsDevelopment())
 {
+    var devConnStr = builder.Configuration.GetConnectionString("Cosmos")
+        ?? throw new InvalidOperationException("Cosmos connection string not configured for Development.");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseInMemoryDatabase("gasoholic-dev"));
+        options.UseCosmos(devConnStr, databaseName: "gasoholic", cosmosOptions =>
+        {
+            cosmosOptions.HttpClientFactory(() =>
+            {
+                var handler = new HttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                return new HttpClient(handler);
+            });
+            cosmosOptions.ConnectionMode(Microsoft.Azure.Cosmos.ConnectionMode.Gateway);
+        }));
 }
 else
 {

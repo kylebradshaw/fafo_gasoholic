@@ -48,6 +48,10 @@ MODES (default: --dev for fastest iteration):
     - Good for: quick testing if Angular already built
     - Stop with: Ctrl+C
 
+PREREQUISITES:
+  - Node.js, npm, .NET SDK
+  - Docker (for Cosmos DB Emulator)
+
 EXAMPLES:
 
   # Default development (fastest iteration)
@@ -123,9 +127,45 @@ check_prerequisites() {
   fi
   echo -e "${GREEN}✓ .NET $(dotnet --version)${NC}"
 
+  # Check Docker
+  if ! command -v docker &> /dev/null; then
+    echo -e "${RED}✗ Docker not found${NC}"
+    echo "  Install from: https://docs.docker.com/get-docker/"
+    exit 1
+  fi
+  if ! docker info &> /dev/null; then
+    echo -e "${RED}✗ Docker daemon not running${NC}"
+    echo "  Start Docker Desktop or the Docker daemon"
+    exit 1
+  fi
+  echo -e "${GREEN}✓ Docker $(docker --version | grep -oP '\d+\.\d+\.\d+')${NC}"
+
   echo ""
 }
 
+
+start_cosmos_emulator() {
+  echo -e "${BLUE}Starting Cosmos DB Emulator...${NC}"
+  docker compose up -d cosmos-emulator
+
+  echo -e "${YELLOW}Waiting for Cosmos emulator to be ready...${NC}"
+  local attempts=0
+  local max_attempts=30
+  while [ $attempts -lt $max_attempts ]; do
+    if curl -fsk https://localhost:8081/_explorer/emulator.pem > /dev/null 2>&1; then
+      echo -e "${GREEN}✓ Cosmos DB Emulator is ready${NC}"
+      echo ""
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    echo -e "  Waiting... ($attempts/$max_attempts)"
+    sleep 5
+  done
+
+  echo -e "${RED}✗ Cosmos emulator failed to start within $((max_attempts * 5))s${NC}"
+  echo "  Check: docker compose logs cosmos-emulator"
+  exit 1
+}
 
 cleanup() {
   echo ""
@@ -231,6 +271,7 @@ main() {
   echo ""
 
   check_prerequisites
+  start_cosmos_emulator
 
   case $MODE in
     dev)
