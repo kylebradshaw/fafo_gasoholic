@@ -17,16 +17,12 @@ public class AppDbContext : DbContext
             b.ToContainer("Users");
             b.HasPartitionKey(u => u.Id);
             b.Property(u => u.Email).HasMaxLength(256);
-            b.HasMany(u => u.Autos).WithOne(a => a.User).HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.NoAction);
-            b.HasMany(u => u.VerificationTokens).WithOne(vt => vt.User).HasForeignKey(vt => vt.UserId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Auto>(b =>
         {
             b.ToContainer("Autos");
             b.HasPartitionKey(a => a.UserId);
-            b.HasMany(a => a.Fillups).WithOne(f => f.Auto).HasForeignKey(f => f.AutoId).OnDelete(DeleteBehavior.NoAction);
-            b.HasMany(a => a.MaintenanceRecords).WithOne(m => m.Auto).HasForeignKey(m => m.AutoId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Fillup>(b =>

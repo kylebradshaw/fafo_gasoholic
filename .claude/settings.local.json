@@ -52,7 +52,10 @@
       "Bash(az storage account list:*)",
       "Bash(az storage:*)",
       "Bash(az resource:*)",
-      "Bash(npx --no-install ng build --configuration development)"
+      "Bash(npx --no-install ng build --configuration development)",
+      "Bash(gh run:*)",
+      "Bash(az cosmosdb:*)",
+      "Bash(az keyvault secret list:*)"
     ]
   },
   "sandbox": {

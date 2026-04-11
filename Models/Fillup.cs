@@ -2,7 +2,6 @@ public class Fillup
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string AutoId { get; set; } = string.Empty;
-    public Auto Auto { get; set; } = null!;
     public DateTime FilledAt { get; set; }
     public string? Location { get; set; }
     public double? Latitude { get; set; }

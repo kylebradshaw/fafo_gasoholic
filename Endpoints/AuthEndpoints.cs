@@ -22,9 +22,7 @@ public static class AuthEndpoints
                     return Results.Ok(new { status = "ok", email = sessionUser.Email });
             }
 
-            var user = await db.Users
-                .Include(u => u.VerificationTokens)
-                .FirstOrDefaultAsync(u => u.Email == email);
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
             if (user is null)
             {
@@ -37,8 +35,9 @@ public static class AuthEndpoints
             var pendingStatus = user.EmailVerified ? "pending_reauth" : "pending_verification";
 
             // If an active (unused, non-expired) token already exists, don't send another email.
-            var hasActiveToken = user.VerificationTokens
-                .Any(t => t.UsedAt is null && t.ExpiresAt > DateTime.UtcNow);
+            var now = DateTime.UtcNow;
+            var hasActiveToken = await db.VerificationTokens
+                .AnyAsync(t => t.UserId == user.Id && t.UsedAt == null && t.ExpiresAt > now);
 
             if (hasActiveToken)
                 return Results.Accepted(null, new { status = pendingStatus });
@@ -62,9 +61,7 @@ public static class AuthEndpoints
 
         app.MapGet("/auth/verify", async (string token, AppDbContext db, HttpContext ctx) =>
         {
-            var vt = await db.VerificationTokens
-                .Include(t => t.User)
-                .FirstOrDefaultAsync(t => t.Token == token);
+            var vt = await db.VerificationTokens.FirstOrDefaultAsync(t => t.Token == token);
 
             if (vt is null)
                 return Results.BadRequest(new { error = "token_not_found" });
@@ -73,20 +70,24 @@ public static class AuthEndpoints
             if (vt.ExpiresAt <= DateTime.UtcNow)
                 return Results.BadRequest(new { error = "token_expired" });
 
+            var user = await db.Users.FindAsync(vt.UserId);
+            if (user is null)
+                return Results.BadRequest(new { error = "user_not_found" });
+
             vt.UsedAt = DateTime.UtcNow;
-            vt.User.EmailVerified = true;
-            vt.User.LastSignIn = DateTime.UtcNow;
+            user.EmailVerified = true;
+            user.LastSignIn = DateTime.UtcNow;
             try
             {
                 await db.SaveChangesAsync();
             }
             catch
             {
-                db.Entry(vt.User).Property(u => u.LastSignIn).IsModified = false;
+                db.Entry(user).Property(u => u.LastSignIn).IsModified = false;
                 await db.SaveChangesAsync();
             }
 
-            ctx.Session.SetString(UserIdKey, vt.User.Id);
+            ctx.Session.SetString(UserIdKey, user.Id);
             return Results.Redirect("/app");
         });
 
@@ -96,9 +97,7 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = "Email is required" });
 
             var email = req.Email.Trim().ToLowerInvariant();
-            var user = await db.Users
-                .Include(u => u.VerificationTokens)
-                .FirstOrDefaultAsync(u => u.Email == email);
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (user is null)
                 return Results.Ok(new { status = "ok" });  // Don't reveal whether user exists
 
@@ -106,8 +105,9 @@ public static class AuthEndpoints
             // Without that guard, anyone could trigger emails to any verified address.
             if (user.EmailVerified)
             {
-                var hasActiveTokenForReauth = user.VerificationTokens
-                    .Any(t => t.UsedAt is null && t.ExpiresAt > DateTime.UtcNow);
+                var now = DateTime.UtcNow;
+                var hasActiveTokenForReauth = await db.VerificationTokens
+                    .AnyAsync(t => t.UserId == user.Id && t.UsedAt == null && t.ExpiresAt > now);
                 if (!hasActiveTokenForReauth)
                     return Results.Ok(new { status = "ok" });
             }
