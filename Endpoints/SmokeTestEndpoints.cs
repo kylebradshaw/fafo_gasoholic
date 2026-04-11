@@ -67,6 +67,21 @@ public static class SmokeTestEndpoints
             if (user is null)
                 return Results.NotFound(new { error = "user not found" });
 
+            var autoIds = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .ToListAsync(db.Autos.Where(a => a.UserId == user.Id).Select(a => a.Id));
+            var fillups = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .ToListAsync(db.Fillups.Where(f => autoIds.Contains(f.AutoId)));
+            db.Fillups.RemoveRange(fillups);
+            var maintenance = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .ToListAsync(db.MaintenanceRecords.Where(m => autoIds.Contains(m.AutoId)));
+            db.MaintenanceRecords.RemoveRange(maintenance);
+            var autos = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .ToListAsync(db.Autos.Where(a => a.UserId == user.Id));
+            db.Autos.RemoveRange(autos);
+            var tokens = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .ToListAsync(db.VerificationTokens.Where(t => t.UserId == user.Id));
+            db.VerificationTokens.RemoveRange(tokens);
+
             db.Users.Remove(user);
             await db.SaveChangesAsync();
             return Results.NoContent();

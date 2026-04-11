@@ -78,6 +78,12 @@ public static class AutoEndpoints
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
 
+            var fillups = await db.Fillups.Where(f => f.AutoId == id).ToListAsync();
+            db.Fillups.RemoveRange(fillups);
+
+            var maintenance = await db.MaintenanceRecords.Where(m => m.AutoId == id).ToListAsync();
+            db.MaintenanceRecords.RemoveRange(maintenance);
+
             db.Autos.Remove(auto);
             await db.SaveChangesAsync();
 

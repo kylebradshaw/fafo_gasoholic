@@ -12,48 +12,41 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>()
-            .Property(u => u.Email)
-            .HasMaxLength(256);
+        modelBuilder.Entity<User>(b =>
+        {
+            b.ToContainer("Users");
+            b.HasPartitionKey(u => u.Id);
+            b.Property(u => u.Email).HasMaxLength(256);
+            b.HasMany(u => u.Autos).WithOne(a => a.User).HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.NoAction);
+            b.HasMany(u => u.VerificationTokens).WithOne(vt => vt.User).HasForeignKey(vt => vt.UserId).OnDelete(DeleteBehavior.NoAction);
+        });
 
-        modelBuilder.Entity<User>()
-            .HasIndex(u => u.Email)
-            .IsUnique();
+        modelBuilder.Entity<Auto>(b =>
+        {
+            b.ToContainer("Autos");
+            b.HasPartitionKey(a => a.UserId);
+            b.HasMany(a => a.Fillups).WithOne(f => f.Auto).HasForeignKey(f => f.AutoId).OnDelete(DeleteBehavior.NoAction);
+            b.HasMany(a => a.MaintenanceRecords).WithOne(m => m.Auto).HasForeignKey(m => m.AutoId).OnDelete(DeleteBehavior.NoAction);
+        });
 
-        modelBuilder.Entity<Auto>()
-            .HasOne(a => a.User)
-            .WithMany(u => u.Autos)
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Fillup>(b =>
+        {
+            b.ToContainer("Fillups");
+            b.HasPartitionKey(f => f.AutoId);
+            b.Property(f => f.FuelType).HasConversion<string>();
+        });
 
-        modelBuilder.Entity<Fillup>()
-            .HasOne(f => f.Auto)
-            .WithMany(a => a.Fillups)
-            .HasForeignKey(f => f.AutoId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MaintenanceRecord>(b =>
+        {
+            b.ToContainer("Maintenance");
+            b.HasPartitionKey(m => m.AutoId);
+            b.Property(m => m.Type).HasConversion<string>();
+        });
 
-        modelBuilder.Entity<Fillup>()
-            .Property(f => f.FuelType)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<MaintenanceRecord>()
-            .HasOne(m => m.Auto)
-            .WithMany(a => a.MaintenanceRecords)
-            .HasForeignKey(m => m.AutoId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<MaintenanceRecord>()
-            .Property(m => m.Type)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<VerificationToken>()
-            .HasOne(vt => vt.User)
-            .WithMany(u => u.VerificationTokens)
-            .HasForeignKey(vt => vt.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<VerificationToken>()
-            .HasIndex(vt => vt.Token)
-            .IsUnique();
+        modelBuilder.Entity<VerificationToken>(b =>
+        {
+            b.ToContainer("VerificationTokens");
+            b.HasPartitionKey(vt => vt.UserId);
+        });
     }
 }

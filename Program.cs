@@ -6,14 +6,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 var isProd = builder.Environment.IsProduction();
 
-var connStr = builder.Configuration.GetConnectionString("Sqlite")
-    ?? throw new InvalidOperationException("Sqlite connection string not configured.");
-
-builder.Services.AddDbContext<AppDbContext>(options =>
+if (builder.Environment.IsEnvironment("Testing"))
 {
-    options.UseSqlite(connStr);
-    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-});
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseInMemoryDatabase($"gasoholic-{Guid.NewGuid():N}"));
+}
+else
+{
+    var connStr = builder.Configuration.GetConnectionString("Cosmos")
+        ?? throw new InvalidOperationException("Cosmos connection string not configured.");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseCosmos(connStr, databaseName: "gasoholic"));
+}
 
 builder.Services.AddDistributedMemoryCache();
 
@@ -54,8 +58,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-    db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+    await db.Database.EnsureCreatedAsync();
 }
 
 var fwdOptions = new ForwardedHeadersOptions

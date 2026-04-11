@@ -57,19 +57,13 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /warnaserror+:NU1605,SYSLIB0011
 
 [sourceFiles]
-Data/
- AppDbContext.cs
- AppDbContextFactory.cs
+Data/AppDbContext.cs
 Endpoints/
  AuthEndpoints.cs
  AutoEndpoints.cs
  FillupEndpoints.cs
  MaintenanceEndpoints.cs
  SmokeTestEndpoints.cs
-Migrations/
- 20260410144815_InitialCreate.cs
- 20260410144815_InitialCreate.Designer.cs
- AppDbContextModelSnapshot.cs
 Models/
  Auto.cs
  Enums.cs
@@ -399,18 +393,27 @@ Services/
  WindowsBase.dll
 <NUGET>/
  azure.communication.email/1.0.1/lib/netstandard2.0/Azure.Communication.Email.dll
- azure.core/1.34.0/lib/net6.0/Azure.Core.dll
- microsoft.bcl.asyncinterfaces/1.1.1/ref/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
- microsoft.data.sqlite.core/10.0.5/lib/net8.0/Microsoft.Data.Sqlite.dll
+ azure.core/1.44.1/lib/net6.0/Azure.Core.dll
+ microsoft.azure.cosmos/3.51.0/lib/netstandard2.0/
+  Microsoft.Azure.Cosmos.Client.dll
+  Microsoft.Azure.Cosmos.Core.dll
+  Microsoft.Azure.Cosmos.Direct.dll
+  Microsoft.Azure.Cosmos.Serialization.HybridRow.dll
+ microsoft.bcl.asyncinterfaces/6.0.0/lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
+ microsoft.bcl.hashcode/1.1.0/ref/netcoreapp2.1/Microsoft.Bcl.HashCode.dll
  microsoft.entityframeworkcore.abstractions/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll
- microsoft.entityframeworkcore.relational/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll
- microsoft.entityframeworkcore.sqlite.core/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Sqlite.dll
+ microsoft.entityframeworkcore.cosmos/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Cosmos.dll
+ microsoft.entityframeworkcore.inmemory/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.InMemory.dll
  microsoft.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.dll
- microsoft.extensions.dependencymodel/10.0.5/lib/net10.0/Microsoft.Extensions.DependencyModel.dll
- sqlitepclraw.bundle_e_sqlite3/2.1.11/lib/netstandard2.0/SQLitePCLRaw.batteries_v2.dll
- sqlitepclraw.core/2.1.11/lib/netstandard2.0/SQLitePCLRaw.core.dll
- sqlitepclraw.provider.e_sqlite3/2.1.11/lib/net6.0/SQLitePCLRaw.provider.e_sqlite3.dll
- system.memory.data/1.0.2/lib/netstandard2.0/System.Memory.Data.dll
+ microsoft.win32.systemevents/6.0.0/lib/net6.0/Microsoft.Win32.SystemEvents.dll
+ newtonsoft.json/13.0.3/lib/net6.0/Newtonsoft.Json.dll
+ system.clientmodel/1.1.0/lib/net6.0/System.ClientModel.dll
+ system.configuration.configurationmanager/6.0.0/lib/net6.0/System.Configuration.ConfigurationManager.dll
+ system.drawing.common/6.0.0/lib/net6.0/System.Drawing.Common.dll
+ system.memory.data/6.0.0/lib/net6.0/System.Memory.Data.dll
+ system.security.cryptography.protecteddata/6.0.0/lib/net6.0/System.Security.Cryptography.ProtectedData.dll
+ system.security.permissions/6.0.0/lib/net6.0/System.Security.Permissions.dll
+ system.windows.extensions/6.0.0/lib/net6.0/System.Windows.Extensions.dll
 
 [analyzerReferences]
 ../../../../../usr/local/share/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.3/analyzers/dotnet/cs/

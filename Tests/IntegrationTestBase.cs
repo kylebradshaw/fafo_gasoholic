@@ -3,7 +3,7 @@ using System.Text.Json;
 
 /// <summary>
 /// Base class providing helpers shared across all integration test classes.
-/// Each test class gets its own <see cref="GasoholicWebAppFactory"/> with a fresh SQLite database.
+/// Each test class gets its own <see cref="GasoholicWebAppFactory"/> with a fresh in-memory database.
 /// </summary>
 public abstract class IntegrationTestBase : IClassFixture<GasoholicWebAppFactory>
 {
