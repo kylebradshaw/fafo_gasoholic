@@ -216,7 +216,7 @@ export class FillupModalComponent {
   @Input() isOpen = false;
   @Input() mode: 'add' | 'edit' = 'add';
   @Input() fillup: any = null;
-  @Input() autoId: number | null = null;
+  @Input() autoId: string | null = null;
   @Output() close = new EventEmitter<void>();
   @Output() save = new EventEmitter<any>();
 

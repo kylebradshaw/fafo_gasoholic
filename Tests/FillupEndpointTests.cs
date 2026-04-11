@@ -2,31 +2,22 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-/// <summary>
-/// Integration tests for the fillup endpoints:
-///   GET    /api/autos/{autoId}/fillups
-///   POST   /api/autos/{autoId}/fillups
-///   PUT    /api/autos/{autoId}/fillups/{id}
-///   DELETE /api/autos/{autoId}/fillups/{id}
-/// </summary>
 public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTestBase(factory)
 {
-    // ── helpers ────────────────────────────────────────────────────────────────
-
-    private async Task<(HttpClient client, int autoId)> CreateAutoAsync(string? emailSuffix = null)
+    private async Task<(HttpClient client, string autoId)> CreateAutoAsync(string? emailSuffix = null)
     {
         var email = $"fillup-{emailSuffix ?? Guid.NewGuid().ToString()}@test.com";
         var client = await CreateAuthenticatedClientAsync(email);
         var resp = await client.PostAsJsonAsync("/api/autos",
             new { brand = "Honda", model = "Civic", plate = "HND1", odometer = 0m });
         resp.EnsureSuccessStatusCode();
-        var autoId = (await ReadJsonAsync(resp)).GetProperty("id").GetInt32();
+        var autoId = (await ReadJsonAsync(resp)).GetProperty("id").GetString()!;
         return (client, autoId);
     }
 
     private static object MakeFillupRequest(
         decimal odometer = 10000m, decimal gallons = 10m, bool isPartial = false,
-        int fuelType = 0 /* FuelType.Regular */, decimal pricePerGallon = 3.50m,
+        int fuelType = 0, decimal pricePerGallon = 3.50m,
         DateTime? filledAt = null) => new
         {
             filledAt = filledAt ?? DateTime.UtcNow,
@@ -40,14 +31,12 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
             isPartialFill = isPartial
         };
 
-    // ── POST /api/autos/{autoId}/fillups ───────────────────────────────────────
-
     [Fact]
     public async Task PostFillup_Unauthenticated_Returns401()
     {
         var client = CreateClient();
 
-        var resp = await client.PostAsJsonAsync("/api/autos/1/fillups", MakeFillupRequest());
+        var resp = await client.PostAsJsonAsync("/api/autos/nonexistent/fillups", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -57,7 +46,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     {
         var client = await CreateAuthenticatedClientAsync($"post404auto-{Guid.NewGuid()}@test.com");
 
-        var resp = await client.PostAsJsonAsync("/api/autos/99999/fillups", MakeFillupRequest());
+        var resp = await client.PostAsJsonAsync("/api/autos/nonexistent-id/fillups", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -83,7 +72,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
 
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
-        Assert.True(doc.GetProperty("id").GetInt32() > 0);
+        Assert.False(string.IsNullOrEmpty(doc.GetProperty("id").GetString()));
     }
 
     [Fact]
@@ -106,7 +95,6 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     public async Task PostFillup_AllFuelTypes_AcceptedSuccessfully()
     {
         var (client, autoId) = await CreateAutoAsync();
-        // FuelType enum: Regular=0, MidGrade=1, Premium=2, Diesel=3, E85=4
         var fuelTypes = new[] { 0, 1, 2, 3, 4 };
 
         for (int i = 0; i < fuelTypes.Length; i++)
@@ -129,7 +117,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
             location = "Shell Station, Main St",
             latitude = 37.7749,
             longitude = -122.4194,
-            fuelType = 2,       // FuelType.Premium = 2
+            fuelType = 2,
             pricePerGallon = 4.29m,
             gallons = 11.5m,
             odometer = 50000m,
@@ -147,14 +135,12 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         Assert.Equal(-122.4194, rows[0].GetProperty("longitude").GetDouble(), precision: 4);
     }
 
-    // ── PUT /api/autos/{autoId}/fillups/{id} ───────────────────────────────────
-
     [Fact]
     public async Task PutFillup_Unauthenticated_Returns401()
     {
         var client = CreateClient();
 
-        var resp = await client.PutAsJsonAsync("/api/autos/1/fillups/1", MakeFillupRequest());
+        var resp = await client.PutAsJsonAsync("/api/autos/x/fillups/y", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -164,7 +150,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     {
         var client = await CreateAuthenticatedClientAsync($"put404auto-{Guid.NewGuid()}@test.com");
 
-        var resp = await client.PutAsJsonAsync("/api/autos/99999/fillups/1", MakeFillupRequest());
+        var resp = await client.PutAsJsonAsync("/api/autos/nonexistent-id/fillups/y", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -175,7 +161,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         var (ownerClient, autoId) = await CreateAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"putother-{Guid.NewGuid()}@test.com");
 
-        var resp = await otherClient.PutAsJsonAsync($"/api/autos/{autoId}/fillups/1", MakeFillupRequest());
+        var resp = await otherClient.PutAsJsonAsync($"/api/autos/{autoId}/fillups/y", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
     }
@@ -185,7 +171,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     {
         var (client, autoId) = await CreateAutoAsync();
 
-        var resp = await client.PutAsJsonAsync($"/api/autos/{autoId}/fillups/99999", MakeFillupRequest());
+        var resp = await client.PutAsJsonAsync($"/api/autos/{autoId}/fillups/nonexistent-id", MakeFillupRequest());
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -197,14 +183,13 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
 
         var createResp = await client.PostAsJsonAsync($"/api/autos/{autoId}/fillups",
             MakeFillupRequest(odometer: 30000m, gallons: 10m));
-        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var updateResp = await client.PutAsJsonAsync($"/api/autos/{autoId}/fillups/{fillupId}",
             MakeFillupRequest(odometer: 30000m, gallons: 12.5m, pricePerGallon: 4.00m));
 
         Assert.Equal(HttpStatusCode.OK, updateResp.StatusCode);
 
-        // Verify update is reflected in GET
         var listResp = await client.GetAsync($"/api/autos/{autoId}/fillups");
         var rows = (await ReadJsonAsync(listResp)).EnumerateArray().ToList();
         Assert.Single(rows);
@@ -219,9 +204,8 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
 
         var createResp = await client.PostAsJsonAsync($"/api/autos/{autoId}/fillups",
             MakeFillupRequest(odometer: 10000m, gallons: 10m, isPartial: false));
-        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
-        // Change to partial
         await client.PutAsJsonAsync($"/api/autos/{autoId}/fillups/{fillupId}",
             MakeFillupRequest(odometer: 10000m, gallons: 5m, isPartial: true));
 
@@ -230,14 +214,12 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         Assert.True(rows[0].GetProperty("isPartialFill").GetBoolean());
     }
 
-    // ── DELETE /api/autos/{autoId}/fillups/{id} ────────────────────────────────
-
     [Fact]
     public async Task DeleteFillup_Unauthenticated_Returns401()
     {
         var client = CreateClient();
 
-        var resp = await client.DeleteAsync("/api/autos/1/fillups/1");
+        var resp = await client.DeleteAsync("/api/autos/x/fillups/y");
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -247,7 +229,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     {
         var client = await CreateAuthenticatedClientAsync($"del404auto-{Guid.NewGuid()}@test.com");
 
-        var resp = await client.DeleteAsync("/api/autos/99999/fillups/1");
+        var resp = await client.DeleteAsync("/api/autos/nonexistent-id/fillups/y");
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -258,7 +240,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         var (ownerClient, autoId) = await CreateAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"delother-{Guid.NewGuid()}@test.com");
 
-        var resp = await otherClient.DeleteAsync($"/api/autos/{autoId}/fillups/1");
+        var resp = await otherClient.DeleteAsync($"/api/autos/{autoId}/fillups/y");
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
     }
@@ -268,7 +250,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     {
         var (client, autoId) = await CreateAutoAsync();
 
-        var resp = await client.DeleteAsync($"/api/autos/{autoId}/fillups/99999");
+        var resp = await client.DeleteAsync($"/api/autos/{autoId}/fillups/nonexistent-id");
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -280,7 +262,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
 
         var createResp = await client.PostAsJsonAsync($"/api/autos/{autoId}/fillups",
             MakeFillupRequest(odometer: 40000m, gallons: 10m));
-        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var fillupId = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var deleteResp = await client.DeleteAsync($"/api/autos/{autoId}/fillups/{fillupId}");
 
@@ -288,7 +270,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
 
         var listResp = await client.GetAsync($"/api/autos/{autoId}/fillups");
         var rows = (await ReadJsonAsync(listResp)).EnumerateArray().ToList();
-        Assert.DoesNotContain(rows, r => r.GetProperty("id").GetInt32() == fillupId);
+        Assert.DoesNotContain(rows, r => r.GetProperty("id").GetString() == fillupId);
     }
 
     [Fact]
@@ -301,7 +283,7 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         var r2 = await client.PostAsJsonAsync($"/api/autos/{autoId}/fillups",
             MakeFillupRequest(odometer: 10300m, gallons: 10m));
 
-        var id1 = (await ReadJsonAsync(r1)).GetProperty("id").GetInt32();
+        var id1 = (await ReadJsonAsync(r1)).GetProperty("id").GetString();
 
         await client.DeleteAsync($"/api/autos/{autoId}/fillups/{id1}");
 
@@ -309,6 +291,6 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
         var rows = (await ReadJsonAsync(listResp)).EnumerateArray().ToList();
 
         Assert.Single(rows);
-        Assert.NotEqual(id1, rows[0].GetProperty("id").GetInt32());
+        Assert.NotEqual(id1, rows[0].GetProperty("id").GetString());
     }
 }

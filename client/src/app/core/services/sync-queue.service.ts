@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 export interface PendingFillup {
   id: string;
-  autoId: number;
+  autoId: string;
   filledAt: string;
   fuelType: number;
   pricePerGallon: number;

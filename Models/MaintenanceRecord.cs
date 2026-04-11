@@ -1,7 +1,7 @@
 public class MaintenanceRecord
 {
-    public int Id { get; set; }
-    public int AutoId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string AutoId { get; set; } = string.Empty;
     public Auto Auto { get; set; } = null!;
     public MaintenanceType Type { get; set; }
     public DateTime PerformedAt { get; set; }

@@ -4,12 +4,12 @@ public static class FillupEndpoints
 {
     public static void MapFillupEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/autos/{autoId:int}/fillups", async (int autoId, HttpContext ctx, AppDbContext db) =>
+        app.MapGet("/api/autos/{autoId}/fillups", async (string autoId, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -26,12 +26,12 @@ public static class FillupEndpoints
             return Results.Ok(rows);
         });
 
-        app.MapPost("/api/autos/{autoId:int}/fillups", async (int autoId, FillupRequest req, HttpContext ctx, AppDbContext db) =>
+        app.MapPost("/api/autos/{autoId}/fillups", async (string autoId, FillupRequest req, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -56,12 +56,12 @@ public static class FillupEndpoints
                 new { fillup.Id });
         });
 
-        app.MapPut("/api/autos/{autoId:int}/fillups/{id:int}", async (int autoId, int id, FillupRequest req, HttpContext ctx, AppDbContext db) =>
+        app.MapPut("/api/autos/{autoId}/fillups/{id}", async (string autoId, string id, FillupRequest req, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -83,12 +83,12 @@ public static class FillupEndpoints
             return Results.Ok(new { fillup.Id });
         });
 
-        app.MapDelete("/api/autos/{autoId:int}/fillups/{id:int}", async (int autoId, int id, HttpContext ctx, AppDbContext db) =>
+        app.MapDelete("/api/autos/{autoId}/fillups/{id}", async (string autoId, string id, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -103,18 +103,13 @@ public static class FillupEndpoints
         });
     }
 
-    // MPG logic:
-    // Sort by odometer ascending. For each full fill, find the nearest prior full fill.
-    // Sum all gallons between them (inclusive of partials in between) and divide into the odometer delta.
     static IEnumerable<FillupRow> ComputeMpg(List<Fillup> fillups)
     {
-        // fillups already sorted by odometer ascending
         for (int i = 0; i < fillups.Count; i++)
         {
             var current = fillups[i];
             double? mpg = null;
 
-            // Find the most recent prior full fill
             int priorIdx = -1;
             for (int j = i - 1; j >= 0; j--)
             {
@@ -129,7 +124,6 @@ public static class FillupEndpoints
             {
                 var prior = fillups[priorIdx];
                 var ododelta = (double)(current.Odometer - prior.Odometer);
-                // Sum gallons from priorIdx+1 through i (all fills between prior full fill and this one)
                 var gallons = fillups.Skip(priorIdx + 1).Take(i - priorIdx)
                     .Sum(f => (double)f.Gallons);
                 if (gallons > 0 && ododelta > 0)
@@ -166,7 +160,7 @@ public record FillupRequest(
 );
 
 public record FillupRow(
-    int Id,
+    string Id,
     DateTime FilledAt,
     string? Location,
     double? Latitude,

@@ -9,7 +9,7 @@ public static class AutoEndpoints
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var autos = await db.Autos
                 .Where(a => a.UserId == userId)
                 .OrderBy(a => a.Brand).ThenBy(a => a.Model)
@@ -33,7 +33,7 @@ public static class AutoEndpoints
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = new Auto
             {
                 UserId = userId,
@@ -49,12 +49,12 @@ public static class AutoEndpoints
                 new { auto.Id, auto.Brand, auto.Model, auto.Plate, auto.Odometer });
         });
 
-        app.MapPut("/api/autos/{id:int}", async (int id, AutoRequest req, HttpContext ctx, AppDbContext db) =>
+        app.MapPut("/api/autos/{id}", async (string id, AutoRequest req, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(id);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -68,12 +68,12 @@ public static class AutoEndpoints
             return Results.Ok(new { auto.Id, auto.Brand, auto.Model, auto.Plate, auto.Odometer });
         });
 
-        app.MapDelete("/api/autos/{id:int}", async (int id, HttpContext ctx, AppDbContext db) =>
+        app.MapDelete("/api/autos/{id}", async (string id, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(id);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);

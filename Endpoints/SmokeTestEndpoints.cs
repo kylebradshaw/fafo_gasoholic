@@ -7,16 +7,8 @@ public static class SmokeTestEndpoints
         var secret = app.Configuration["SmokeTestSecret"]
                      ?? Environment.GetEnvironmentVariable("SMOKE_TEST_SECRET");
 
-        // Only register the endpoint if a smoke test secret is configured.
-        // This prevents accidental exposure in environments where the secret isn't set.
         if (string.IsNullOrEmpty(secret)) return;
 
-        // POST /auth/dev-login
-        // Creates or finds a user, marks EmailVerified = true, establishes a session.
-        // Requires X-Smoke-Test-Secret header matching the configured SMOKE_TEST_SECRET.
-        // POST /auth/test-email
-        // Sends a test email via ACS to verify custom domain configuration.
-        // Requires X-Smoke-Test-Secret header matching the configured SMOKE_TEST_SECRET.
         app.MapPost("/auth/test-email", async (
             HttpContext ctx,
             IVerificationEmailSender emailSender) =>
@@ -43,9 +35,6 @@ public static class SmokeTestEndpoints
             }
         });
 
-        // DELETE /auth/dev-cleanup
-        // Deletes a test user and all their data (autos, fillups, verification tokens via cascade).
-        // Only permits emails ending in @example.com or @test.com to prevent accidental real-user deletion.
         app.MapDelete("/auth/dev-cleanup", async (
             HttpContext ctx,
             AppDbContext db) =>
@@ -110,7 +99,6 @@ public static class SmokeTestEndpoints
                 try { await db.SaveChangesAsync(); }
                 catch
                 {
-                    // Retry without LastSignIn if column type is wrong
                     db.Users.Remove(user);
                     user = new User { Email = email, EmailVerified = true, CreatedAt = DateTime.UtcNow };
                     db.Users.Add(user);
@@ -129,7 +117,7 @@ public static class SmokeTestEndpoints
                 }
             }
 
-            ctx.Session.SetInt32(UserIdKey, user.Id);
+            ctx.Session.SetString(UserIdKey, user.Id);
             return Results.Ok(new { status = "ok", email = user.Email });
         });
     }

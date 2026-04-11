@@ -210,7 +210,7 @@ export class AutosComponent {
     }
   }
 
-  async deleteAuto(id: number) {
+  async deleteAuto(id: string) {
     if (confirm('Are you sure you want to delete this auto?')) {
       try {
         await this.autosService.deleteAuto(id);

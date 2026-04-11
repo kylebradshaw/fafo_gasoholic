@@ -268,7 +268,7 @@ export class MaintenanceComponent {
     }
   }
 
-  async deleteRecord(id: number) {
+  async deleteRecord(id: string) {
     const autoId = this.autosService.currentAutoId();
     if (!autoId) return;
 

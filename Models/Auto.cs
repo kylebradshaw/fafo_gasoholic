@@ -1,7 +1,7 @@
 public class Auto
 {
-    public int Id { get; set; }
-    public int UserId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string UserId { get; set; } = string.Empty;
     public User User { get; set; } = null!;
     public string Brand { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;

@@ -2,23 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-/// <summary>
-/// Integration tests for the vehicle (auto) endpoints:
-///   GET    /api/autos
-///   POST   /api/autos
-///   PUT    /api/autos/{id}
-///   DELETE /api/autos/{id}
-/// </summary>
 public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTestBase(factory)
 {
-    // ── helpers ────────────────────────────────────────────────────────────────
-
     private static object MakeAutoRequest(
         string brand = "Toyota", string model = "Camry",
         string plate = "ABC123", decimal odometer = 50000m) =>
         new { brand, model, plate, odometer };
-
-    // ── GET /api/autos ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetAutos_Unauthenticated_Returns401()
@@ -50,10 +39,8 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var clientA = await CreateAuthenticatedClientAsync(userAEmail);
         var clientB = await CreateAuthenticatedClientAsync(userBEmail);
 
-        // User A creates two autos
         await clientA.PostAsJsonAsync("/api/autos", MakeAutoRequest("Ford", "F-150", "AA111"));
         await clientA.PostAsJsonAsync("/api/autos", MakeAutoRequest("Honda", "Civic", "AA222"));
-        // User B creates one auto
         await clientB.PostAsJsonAsync("/api/autos", MakeAutoRequest("Chevy", "Silverado", "BB111"));
 
         var respA = await clientA.GetAsync("/api/autos");
@@ -86,8 +73,6 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         Assert.Equal("Camry", rows[2].GetProperty("model").GetString());
     }
 
-    // ── POST /api/autos ────────────────────────────────────────────────────────
-
     [Fact]
     public async Task PostAuto_Unauthenticated_Returns401()
     {
@@ -108,7 +93,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
 
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
-        Assert.True(doc.GetProperty("id").GetInt32() > 0);
+        Assert.False(string.IsNullOrEmpty(doc.GetProperty("id").GetString()));
         Assert.Equal("Mazda", doc.GetProperty("brand").GetString());
         Assert.Equal("CX-5", doc.GetProperty("model").GetString());
         Assert.Equal("MZD1", doc.GetProperty("plate").GetString());
@@ -129,14 +114,12 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         Assert.Equal("Subaru", rows[0].GetProperty("brand").GetString());
     }
 
-    // ── PUT /api/autos/{id} ────────────────────────────────────────────────────
-
     [Fact]
     public async Task PutAuto_Unauthenticated_Returns401()
     {
         var client = CreateClient();
 
-        var resp = await client.PutAsJsonAsync("/api/autos/1", MakeAutoRequest());
+        var resp = await client.PutAsJsonAsync("/api/autos/nonexistent", MakeAutoRequest());
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -147,7 +130,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var client = await CreateAuthenticatedClientAsync($"put-{Guid.NewGuid()}@test.com");
 
         var createResp = await client.PostAsJsonAsync("/api/autos", MakeAutoRequest("Ford", "Escape", "OLD1"));
-        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var updateResp = await client.PutAsJsonAsync($"/api/autos/{id}",
             MakeAutoRequest("Ford", "Explorer", "NEW1", 99000m));
@@ -164,7 +147,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     {
         var client = await CreateAuthenticatedClientAsync($"put404-{Guid.NewGuid()}@test.com");
 
-        var resp = await client.PutAsJsonAsync("/api/autos/99999", MakeAutoRequest());
+        var resp = await client.PutAsJsonAsync("/api/autos/nonexistent-id", MakeAutoRequest());
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -176,21 +159,19 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var otherClient = await CreateAuthenticatedClientAsync($"other-{Guid.NewGuid()}@test.com");
 
         var createResp = await ownerClient.PostAsJsonAsync("/api/autos", MakeAutoRequest());
-        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var resp = await otherClient.PutAsJsonAsync($"/api/autos/{id}", MakeAutoRequest("Hacked", "Car", "HACK"));
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
     }
 
-    // ── DELETE /api/autos/{id} ─────────────────────────────────────────────────
-
     [Fact]
     public async Task DeleteAuto_Unauthenticated_Returns401()
     {
         var client = CreateClient();
 
-        var resp = await client.DeleteAsync("/api/autos/1");
+        var resp = await client.DeleteAsync("/api/autos/nonexistent");
 
         Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
     }
@@ -201,7 +182,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var client = await CreateAuthenticatedClientAsync($"delete-{Guid.NewGuid()}@test.com");
 
         var createResp = await client.PostAsJsonAsync("/api/autos", MakeAutoRequest());
-        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var deleteResp = await client.DeleteAsync($"/api/autos/{id}");
 
@@ -209,7 +190,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
 
         var listResp = await client.GetAsync("/api/autos");
         var rows = (await ReadJsonAsync(listResp)).EnumerateArray().ToList();
-        Assert.DoesNotContain(rows, r => r.GetProperty("id").GetInt32() == id);
+        Assert.DoesNotContain(rows, r => r.GetProperty("id").GetString() == id);
     }
 
     [Fact]
@@ -217,7 +198,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     {
         var client = await CreateAuthenticatedClientAsync($"del404-{Guid.NewGuid()}@test.com");
 
-        var resp = await client.DeleteAsync("/api/autos/99999");
+        var resp = await client.DeleteAsync("/api/autos/nonexistent-id");
 
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
@@ -229,7 +210,7 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var otherClient = await CreateAuthenticatedClientAsync($"delother-{Guid.NewGuid()}@test.com");
 
         var createResp = await ownerClient.PostAsJsonAsync("/api/autos", MakeAutoRequest());
-        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var id = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
         var resp = await otherClient.DeleteAsync($"/api/autos/{id}");
 
@@ -241,28 +222,24 @@ public class AutoEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     {
         var client = await CreateAuthenticatedClientAsync($"cascade-{Guid.NewGuid()}@test.com");
 
-        // Create auto
         var createResp = await client.PostAsJsonAsync("/api/autos", MakeAutoRequest());
-        var autoId = (await ReadJsonAsync(createResp)).GetProperty("id").GetInt32();
+        var autoId = (await ReadJsonAsync(createResp)).GetProperty("id").GetString();
 
-        // Add a fillup to the auto
         await client.PostAsJsonAsync($"/api/autos/{autoId}/fillups", new
         {
             filledAt = DateTime.UtcNow,
             location = (string?)null,
             latitude = (double?)null,
             longitude = (double?)null,
-            fuelType = 0,       // FuelType.Regular = 0
+            fuelType = 0,
             pricePerGallon = 3.50m,
             gallons = 10m,
             odometer = 10000m,
             isPartialFill = false
         });
 
-        // Delete auto
         await client.DeleteAsync($"/api/autos/{autoId}");
 
-        // The auto is gone, GET should return 404
         var fillupResp = await client.GetAsync($"/api/autos/{autoId}/fillups");
         Assert.Equal(HttpStatusCode.NotFound, fillupResp.StatusCode);
     }

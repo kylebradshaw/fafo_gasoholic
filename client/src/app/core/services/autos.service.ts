@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 export interface Auto {
-  id: number;
+  id: string;
   brand: string;
   model: string;
   plate: string;
@@ -19,7 +19,7 @@ export class AutosService {
   private http = inject(HttpClient);
 
   private autosSignal = signal<Auto[]>([]);
-  private currentAutoIdSignal = signal<number | null>(null);
+  private currentAutoIdSignal = signal<string | null>(null);
   private loadingSignal = signal(false);
 
   autos = this.autosSignal.asReadonly();
@@ -46,7 +46,7 @@ export class AutosService {
     }
   }
 
-  setCurrentAuto(id: number): void {
+  setCurrentAuto(id: string): void {
     this.currentAutoIdSignal.set(id);
   }
 
@@ -58,7 +58,7 @@ export class AutosService {
     return created;
   }
 
-  async updateAuto(id: number, auto: Omit<Auto, 'id'>): Promise<Auto> {
+  async updateAuto(id: string, auto: Omit<Auto, 'id'>): Promise<Auto> {
     const updated = await firstValueFrom(
       this.http.put<Auto>(`/api/autos/${id}`, auto, { withCredentials: true })
     );
@@ -68,7 +68,7 @@ export class AutosService {
     return updated;
   }
 
-  async deleteAuto(id: number): Promise<void> {
+  async deleteAuto(id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete(`/api/autos/${id}`, { withCredentials: true })
     );

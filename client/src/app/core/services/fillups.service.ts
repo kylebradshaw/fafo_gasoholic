@@ -3,8 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 export interface Fillup {
-  id: number;
-  autoId: number;
+  id: string;
+  autoId: string;
   filledAt: string;
   fuelType: string | number;
   pricePerGallon: number;
@@ -26,7 +26,7 @@ export class FillupsService {
   fillups = this.fillupsSignal.asReadonly();
   loading = this.loadingSignal.asReadonly();
 
-  async loadFillups(autoId: number): Promise<void> {
+  async loadFillups(autoId: string): Promise<void> {
     this.loadingSignal.set(true);
     try {
       const fillups = await firstValueFrom(
@@ -38,25 +38,25 @@ export class FillupsService {
     }
   }
 
-  async createFillup(autoId: number, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
+  async createFillup(autoId: string, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
     const response = await firstValueFrom(
-      this.http.post<{ id: number }>(`/api/autos/${autoId}/fillups`, fillup, { withCredentials: true })
+      this.http.post<{ id: string }>(`/api/autos/${autoId}/fillups`, fillup, { withCredentials: true })
     );
     // Server only returns { id }, so reload to get complete data with server-calculated MPG
     await this.loadFillups(autoId);
     return { ...fillup, id: response.id, autoId } as Fillup;
   }
 
-  async updateFillup(autoId: number, id: number, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
+  async updateFillup(autoId: string, id: string, fillup: Omit<Fillup, 'id' | 'autoId'>): Promise<Fillup> {
     await firstValueFrom(
-      this.http.put<{ id: number }>(`/api/autos/${autoId}/fillups/${id}`, fillup, { withCredentials: true })
+      this.http.put<{ id: string }>(`/api/autos/${autoId}/fillups/${id}`, fillup, { withCredentials: true })
     );
     // Server only returns { id }, so reload to get complete data with server-calculated MPG
     await this.loadFillups(autoId);
     return { ...fillup, id, autoId } as Fillup;
   }
 
-  async deleteFillup(autoId: number, id: number): Promise<void> {
+  async deleteFillup(autoId: string, id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete(`/api/autos/${autoId}/fillups/${id}`, { withCredentials: true })
     );

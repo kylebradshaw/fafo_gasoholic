@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 export interface MaintenanceRecord {
-  id: number;
+  id: string;
   type: string;
   performedAt: string;
   odometer: number;
@@ -23,7 +23,7 @@ export class MaintenanceService {
   records = this.recordsSignal.asReadonly();
   loading = this.loadingSignal.asReadonly();
 
-  async loadRecords(autoId: number): Promise<void> {
+  async loadRecords(autoId: string): Promise<void> {
     this.loadingSignal.set(true);
     try {
       const records = await firstValueFrom(
@@ -35,21 +35,21 @@ export class MaintenanceService {
     }
   }
 
-  async createRecord(autoId: number, data: Omit<MaintenanceRecord, 'id'>): Promise<void> {
+  async createRecord(autoId: string, data: Omit<MaintenanceRecord, 'id'>): Promise<void> {
     await firstValueFrom(
-      this.http.post<{ id: number }>(`/api/autos/${autoId}/maintenance`, data, { withCredentials: true })
+      this.http.post<{ id: string }>(`/api/autos/${autoId}/maintenance`, data, { withCredentials: true })
     );
     await this.loadRecords(autoId);
   }
 
-  async updateRecord(autoId: number, id: number, data: Omit<MaintenanceRecord, 'id'>): Promise<void> {
+  async updateRecord(autoId: string, id: string, data: Omit<MaintenanceRecord, 'id'>): Promise<void> {
     await firstValueFrom(
-      this.http.put<{ id: number }>(`/api/autos/${autoId}/maintenance/${id}`, data, { withCredentials: true })
+      this.http.put<{ id: string }>(`/api/autos/${autoId}/maintenance/${id}`, data, { withCredentials: true })
     );
     await this.loadRecords(autoId);
   }
 
-  async deleteRecord(autoId: number, id: number): Promise<void> {
+  async deleteRecord(autoId: string, id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete(`/api/autos/${autoId}/maintenance/${id}`, { withCredentials: true })
     );

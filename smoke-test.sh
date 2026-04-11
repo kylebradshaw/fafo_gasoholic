@@ -135,7 +135,7 @@ STATUS=$(req_status POST /api/autos \
   -d '{"brand":"Toyota","model":"Smoke Test","plate":"TST001","odometer":10000}')
 BODY=$(cat /tmp/smoke_body)
 assert_status "POST /api/autos" "201" "$STATUS" "$BODY"
-AUTO_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+AUTO_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"//')
 if [ -z "$AUTO_ID" ]; then
   fail "Extract autoId" "could not parse id from: $BODY"
 else
@@ -161,7 +161,7 @@ STATUS=$(req_status POST "/api/autos/$AUTO_ID/fillups" \
   -d "{\"filledAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"fuelType\":0,\"pricePerGallon\":3.50,\"gallons\":10.0,\"odometer\":10000,\"isPartialFill\":false}")
 BODY=$(cat /tmp/smoke_body)
 assert_status "POST fillup 1" "201" "$STATUS" "$BODY"
-FILLUP1_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+FILLUP1_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"//')
 
 # ── Step 8: Add second fillup (full tank, 300 miles later → MPG = 30) ──────
 
@@ -170,7 +170,7 @@ STATUS=$(req_status POST "/api/autos/$AUTO_ID/fillups" \
   -d "{\"filledAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"fuelType\":0,\"pricePerGallon\":3.60,\"gallons\":10.0,\"odometer\":10300,\"isPartialFill\":false}")
 BODY=$(cat /tmp/smoke_body)
 assert_status "POST fillup 2" "201" "$STATUS" "$BODY"
-FILLUP2_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+FILLUP2_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"//')
 
 # ── Step 9: Get fillups → MPG computed ─────────────────────────────────────
 
@@ -193,7 +193,7 @@ STATUS=$(req_status POST "/api/autos/$AUTO_ID/maintenance" \
   -d "{\"type\":\"OilChange\",\"performedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"odometer\":10150,\"cost\":45.99,\"notes\":\"Smoke test oil change\"}")
 BODY=$(cat /tmp/smoke_body)
 assert_status "POST /api/autos/$AUTO_ID/maintenance" "201" "$STATUS" "$BODY"
-MAINT_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+MAINT_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"//')
 if [ -z "$MAINT_ID" ]; then
   fail "Extract maintenanceId" "could not parse id from: $BODY"
 else

@@ -4,12 +4,12 @@ public static class MaintenanceEndpoints
 {
     public static void MapMaintenanceEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/autos/{autoId:int}/maintenance", async (int autoId, HttpContext ctx, AppDbContext db) =>
+        app.MapGet("/api/autos/{autoId}/maintenance", async (string autoId, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -30,12 +30,12 @@ public static class MaintenanceEndpoints
             return Results.Ok(records);
         });
 
-        app.MapPost("/api/autos/{autoId:int}/maintenance", async (int autoId, MaintenanceRequest req, HttpContext ctx, AppDbContext db) =>
+        app.MapPost("/api/autos/{autoId}/maintenance", async (string autoId, MaintenanceRequest req, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -55,12 +55,12 @@ public static class MaintenanceEndpoints
             return Results.Created($"/api/autos/{autoId}/maintenance/{record.Id}", new { record.Id });
         });
 
-        app.MapPut("/api/autos/{autoId:int}/maintenance/{id:int}", async (int autoId, int id, MaintenanceRequest req, HttpContext ctx, AppDbContext db) =>
+        app.MapPut("/api/autos/{autoId}/maintenance/{id}", async (string autoId, string id, MaintenanceRequest req, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -78,12 +78,12 @@ public static class MaintenanceEndpoints
             return Results.Ok(new { record.Id });
         });
 
-        app.MapDelete("/api/autos/{autoId:int}/maintenance/{id:int}", async (int autoId, int id, HttpContext ctx, AppDbContext db) =>
+        app.MapDelete("/api/autos/{autoId}/maintenance/{id}", async (string autoId, string id, HttpContext ctx, AppDbContext db) =>
         {
             var auth = await AuthEndpoints.RequireAuth(ctx, db);
             if (auth is not null) return auth;
 
-            var userId = ctx.GetUserId()!.Value;
+            var userId = ctx.GetUserId()!;
             var auto = await db.Autos.FindAsync(autoId);
             if (auto is null) return Results.NotFound();
             if (auto.UserId != userId) return Results.StatusCode(403);
@@ -108,7 +108,7 @@ public record MaintenanceRequest(
 );
 
 public record MaintenanceRow(
-    int Id,
+    string Id,
     string Type,
     DateTime PerformedAt,
     decimal Odometer,

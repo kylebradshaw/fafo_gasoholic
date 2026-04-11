@@ -263,7 +263,7 @@ export class FillupsComponent {
     }
   }
 
-  async deleteFillup(id: number) {
+  async deleteFillup(id: string) {
     const autoId = this.autosService.currentAutoId();
     if (!autoId) return;
 
