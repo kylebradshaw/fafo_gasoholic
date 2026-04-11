@@ -37,17 +37,17 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     }
 
     [Fact]
-    public async Task Login_NewEmail_CreatesUserAndReturnsPending()
+    public async Task Login_NewEmail_CreatesUserAndReturnsPendingVerification()
     {
         var client = CreateClient();
         var email = $"newuser-{Guid.NewGuid()}@test.com";
 
         var resp = await client.PostAsJsonAsync("/auth/login", new { email });
 
-        // 202 Accepted with status "pending"
+        // 202 Accepted with status "pending_verification" (new user, first-time verification)
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
-        Assert.Equal("pending", doc.GetProperty("status").GetString());
+        Assert.Equal("pending_verification", doc.GetProperty("status").GetString());
     }
 
     [Fact]
@@ -82,12 +82,13 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     }
 
     [Fact]
-    public async Task Login_AlreadyVerifiedUser_SetsSessionAndReturnsOk()
+    public async Task Login_VerifiedUserWithActiveSession_ReturnsOkWithoutSendingEmail()
     {
         var client = CreateClient();
-        var email = $"verified-{Guid.NewGuid()}@test.com";
+        var mockSender = GetMockEmailSender();
+        var email = $"verified-session-{Guid.NewGuid()}@test.com";
 
-        // Use dev-login to create a pre-verified user
+        // Use dev-login to create a pre-verified user with an active session on this client
         var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
         {
             Content = JsonContent.Create(new { email }),
@@ -95,13 +96,84 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         };
         await client.SendAsync(devReq);
 
-        // Now login as that verified user
+        var countBefore = mockSender.SentMagicLinks.Count;
+
+        // Login on the SAME client (same session cookie) — should return OK without sending email
         var resp = await client.PostAsJsonAsync("/auth/login", new { email });
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
         Assert.Equal("ok", doc.GetProperty("status").GetString());
         Assert.Equal(email, doc.GetProperty("email").GetString());
+        Assert.Equal(countBefore, mockSender.SentMagicLinks.Count);
+    }
+
+    [Fact]
+    public async Task Login_VerifiedUserWithoutSession_SendsMagicLinkAndReturnsPendingReauth()
+    {
+        // Bootstrap: create a verified user via dev-login on one client
+        var setupClient = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"verified-reauth-{Guid.NewGuid()}@test.com";
+
+        var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
+        {
+            Content = JsonContent.Create(new { email }),
+            Headers = { { "X-Smoke-Test-Secret", GasoholicWebAppFactory.TestSecret } }
+        };
+        await setupClient.SendAsync(devReq);
+
+        var countBefore = mockSender.SentMagicLinks.Count;
+
+        // A FRESH client (no session cookie) tries to log in as the verified user
+        var freshClient = CreateClient();
+        var resp = await freshClient.PostAsJsonAsync("/auth/login", new { email });
+
+        // Should require re-auth — magic link sent, 202 pending_reauth
+        Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
+        var doc = await ReadJsonAsync(resp);
+        Assert.Equal("pending_reauth", doc.GetProperty("status").GetString());
+        Assert.Equal(countBefore + 1, mockSender.SentMagicLinks.Count);
+        Assert.Equal(email, mockSender.SentMagicLinks.Last().Email);
+    }
+
+    [Fact]
+    public async Task Login_FullReauthLifecycle_RequiresMagicLinkAfterLogout()
+    {
+        var mockSender = GetMockEmailSender();
+        var email = $"reauth-lifecycle-{Guid.NewGuid()}@test.com";
+
+        // 1. New user logs in → pending_verification + magic link
+        var client = CreateClient();
+        var login1 = await client.PostAsJsonAsync("/auth/login", new { email });
+        Assert.Equal(HttpStatusCode.Accepted, login1.StatusCode);
+        Assert.Equal("pending_verification", (await ReadJsonAsync(login1)).GetProperty("status").GetString());
+
+        // 2. Click magic link → verified, session established
+        var token1 = mockSender.SentMagicLinks.Last(m => m.Email == email).Token;
+        var verify1 = await client.GetAsync($"/auth/verify?token={token1}");
+        Assert.Equal(HttpStatusCode.Redirect, verify1.StatusCode);
+
+        // 3. /auth/me works
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/auth/me")).StatusCode);
+
+        // 4. Logout
+        await client.PostAsync("/auth/logout", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/auth/me")).StatusCode);
+
+        // 5. Login again (same client, no session) → must get a new magic link as pending_reauth
+        var login2 = await client.PostAsJsonAsync("/auth/login", new { email });
+        Assert.Equal(HttpStatusCode.Accepted, login2.StatusCode);
+        Assert.Equal("pending_reauth", (await ReadJsonAsync(login2)).GetProperty("status").GetString());
+
+        // 6. New token must be different from the first (the first was already used)
+        var token2 = mockSender.SentMagicLinks.Last(m => m.Email == email).Token;
+        Assert.NotEqual(token1, token2);
+
+        // 7. Click new magic link → session restored
+        var verify2 = await client.GetAsync($"/auth/verify?token={token2}");
+        Assert.Equal(HttpStatusCode.Redirect, verify2.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/auth/me")).StatusCode);
     }
 
     [Fact]
@@ -290,6 +362,60 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Resend_VerifiedUserMidReauth_SendsNewMagicLink()
+    {
+        var mockSender = GetMockEmailSender();
+        var email = $"resend-reauth-{Guid.NewGuid()}@test.com";
+
+        // Bootstrap a verified user (dev-login on a separate client so we don't carry a session)
+        var setupClient = CreateClient();
+        var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
+        {
+            Content = JsonContent.Create(new { email }),
+            Headers = { { "X-Smoke-Test-Secret", GasoholicWebAppFactory.TestSecret } }
+        };
+        await setupClient.SendAsync(devReq);
+
+        // Fresh client logs in → triggers a re-auth magic link (verified user, no session)
+        var client = CreateClient();
+        await client.PostAsJsonAsync("/auth/login", new { email });
+        var countAfterLogin = mockSender.SentMagicLinks.Count;
+
+        // Now resend should work because the user has an active unused token
+        var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
+
+        Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
+        Assert.Equal(countAfterLogin + 1, mockSender.SentMagicLinks.Count);
+    }
+
+    [Fact]
+    public async Task Resend_VerifiedUserMidReauth_RateLimited()
+    {
+        var email = $"resend-reauth-rl-{Guid.NewGuid()}@test.com";
+
+        // Bootstrap verified user
+        var setupClient = CreateClient();
+        var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
+        {
+            Content = JsonContent.Create(new { email }),
+            Headers = { { "X-Smoke-Test-Secret", GasoholicWebAppFactory.TestSecret } }
+        };
+        await setupClient.SendAsync(devReq);
+
+        var client = CreateClient();
+        // Token #1 from re-auth login
+        await client.PostAsJsonAsync("/auth/login", new { email });
+        // Resends #2, #3, #4 succeed
+        await client.PostAsJsonAsync("/auth/resend", new { email });
+        await client.PostAsJsonAsync("/auth/resend", new { email });
+        await client.PostAsJsonAsync("/auth/resend", new { email });
+
+        // 5th total token request → rate limited
+        var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
+        Assert.Equal(HttpStatusCode.TooManyRequests, resp.StatusCode);
     }
 
     [Fact]

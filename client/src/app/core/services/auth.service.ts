@@ -6,6 +6,13 @@ export interface User {
   email: string;
 }
 
+export type LoginStatus = 'ok' | 'pending_verification' | 'pending_reauth';
+
+export interface LoginResult {
+  status: LoginStatus;
+  email?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -33,13 +40,22 @@ export class AuthService {
     }
   }
 
-  async login(email: string): Promise<void> {
+  async login(email: string): Promise<LoginResult> {
     this.loadingSignal.set(true);
     try {
+      // observe: 'response' so we can read the HTTP status (200 vs 202)
       const response = await firstValueFrom(
-        this.http.post<{ status: string; email: string }>('/auth/login', { email }, { withCredentials: true })
+        this.http.post<{ status: LoginStatus; email?: string }>(
+          '/auth/login',
+          { email },
+          { withCredentials: true, observe: 'response' }
+        )
       );
-      this.userSignal.set({ email: response.email });
+      const body = response.body!;
+      if (body.status === 'ok' && body.email) {
+        this.userSignal.set({ email: body.email });
+      }
+      return body;
     } finally {
       this.loadingSignal.set(false);
     }

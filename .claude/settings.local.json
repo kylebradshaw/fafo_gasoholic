@@ -46,7 +46,13 @@
       "Bash(dotnet test:*)",
       "Bash(npx playwright:*)",
       "Bash(git commit -m ':*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(gh issue:*)",
+      "WebFetch(domain:gas.sdir.cc)",
+      "Bash(az storage account list:*)",
+      "Bash(az storage:*)",
+      "Bash(az resource:*)",
+      "Bash(npx --no-install ng build --configuration development)"
     ]
   },
   "sandbox": {

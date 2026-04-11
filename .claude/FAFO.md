@@ -470,3 +470,70 @@ Created `.github/workflows/migrate-sqlserver-to-sqlite.yml` — a `workflow_disp
 5. `AZURE_SETUP_CHECKLIST.md` — Removed Step 1.5 (Azure SQL Database provisioning). Updated troubleshooting to reference SQLite/Azure Files instead of SqlConnection. Updated database query and backup sections. Replaced Azure SQL row with Storage Account row in Quick Reference table. Updated disaster recovery section.
 6. `infra/README.md` — Complete rewrite from "Azure Deployment Guide" (which described SQL Server provisioning steps) to "Azure Infrastructure (Bicep)" describing the current SQLite + Azure Files architecture, cost estimates, and deploy commands.
 7. `Dockerfile` — No changes needed; already has USER root for Azure Files SMB write access.
+
+## Session: 2026-04-10
+
+- **Phase 3 completion**: Marked remaining acceptance criteria as done — container app deploys successfully and serves traffic using SQLite, health endpoint returns 200 after deploy, smoke tests pass against deployed container. Phase 3 is now fully complete.
+
+### Phase 4: Azure resource cleanup (code changes)
+
+1. `.github/workflows/migrate-sqlserver-to-sqlite.yml` — Deleted. One-time migration workflow no longer needed.
+2. `testrun.sh` — Deleted. Obsolete SQL Server test runner (referenced SA_PASSWORD, docker compose, SQL Server health checks).
+3. `Endpoints/AuthEndpoints.cs` — Updated comment on line 78 to remove "SQLite TEXT on SQL Server" reference.
+4. `.claude/AZURE.md` — Rewrote entirely. Removed all SQL Server references, Azure SQL cost tables, Key Vault SQL connection string guidance, firewall rule advice. Updated architecture notes for SQLite on Azure Files.
+
+**Remaining Phase 4 items (Azure resource deletions):** Azure SQL Server (`gasoholic-sql`), Azure SQL Database, duplicate container registry (`gasoholicgasacr`), Key Vault SQL Server password secret — require manual Azure CLI commands.
+
+### Phase 4: Azure resource deletions (completed)
+
+Verified container app uses `gasoholicacr` (not `gasoholicgasacr`) before deleting the duplicate. Ran these `az` commands:
+
+- `az sql server delete --name gasoholic-sql --resource-group gasoholic-rg --yes` — also removes the `gasoholic` database as a child resource
+- `az acr delete --name gasoholicgasacr --resource-group gasoholic-rg --yes` — duplicate ACR
+- `az keyvault secret delete --vault-name gasoholic-kv --name SqlConnection` — soft-deleted, scheduled purge 2026-04-18
+
+Phase 4 complete. Database transition plan is fully done.
+
+---
+
+## Session: 2026-04-10 (cont.) — magic-link-every-session plan
+
+Executed `.claude/plans/magic-link-every-session.md`. Goal: require a magic link for every new session, not just first-time verification, so a verified user without an active session cookie can no longer get instant access just by submitting their email.
+
+### Phase 1 — Backend `/auth/login` re-auth requirement
+
+1. `Endpoints/AuthEndpoints.cs` — Rewrote `/auth/login`:
+   - Added an early "active session for this email" check (`Session.GetInt32(UserIdKey)` → look up user → must be verified AND email match) → returns `200 OK { status: "ok" }` without sending email.
+   - Removed the previous "if `EmailVerified` then set session and return ok" branch — verified users without a session now fall through to the magic-link path.
+   - Pending status now branches: verified user → `pending_reauth`, unverified user → `pending_verification` (replaces the old single `"pending"` value).
+   - Active-token guard still suppresses duplicate sends in both flows.
+
+### Phase 2 — Backend `/auth/resend` + tests
+
+1. `Endpoints/AuthEndpoints.cs` — `/auth/resend` now resends for verified users **only** when they're mid re-auth (have an active unused token). Without an active token, verified users still get a silent `200` to avoid user enumeration. Added `Include(u => u.VerificationTokens)` to the user lookup so the in-memory check works.
+2. `Tests/AuthEndpointTests.cs`:
+   - Renamed `Login_NewEmail_CreatesUserAndReturnsPending` → `…ReturnsPendingVerification`; updated expected status string to `pending_verification`.
+   - Replaced `Login_AlreadyVerifiedUser_SetsSessionAndReturnsOk` with two tests: `Login_VerifiedUserWithActiveSession_ReturnsOkWithoutSendingEmail` (asserts no email sent) and `Login_VerifiedUserWithoutSession_SendsMagicLinkAndReturnsPendingReauth` (uses a fresh `CreateClient()` to simulate "no cookie" against a user bootstrapped via dev-login on a separate client).
+   - Added `Login_FullReauthLifecycle_RequiresMagicLinkAfterLogout` covering the full new-user → verify → logout → login → verify-again flow with token uniqueness assertion.
+   - Added `Resend_VerifiedUserMidReauth_SendsNewMagicLink` and `Resend_VerifiedUserMidReauth_RateLimited`.
+   - The existing `Resend_AlreadyVerifiedEmail_Returns200ToAvoidUserEnumeration` still passes — dev-login leaves the user with no active token, so the silent-200 branch holds.
+3. Full test suite green: 75/75 passing (`dotnet test fafo_gasoholic.sln`).
+
+### Phase 3 — Frontend statuses + messaging
+
+1. `client/src/app/core/services/auth.service.ts`:
+   - Exported `LoginStatus` and `LoginResult` types.
+   - `login()` now returns `Promise<LoginResult>` instead of `void`. Switched to `observe: 'response'` so the 202 response is no longer thrown by HttpClient — the body is read directly and the user signal is set only when status is `ok`.
+2. `client/src/app/features/login/login.component.ts`:
+   - Added `pendingHeading` signal.
+   - `onSubmit()` reads the new `LoginResult.status` instead of catching a thrown 202: routes straight to `/app/log` on `ok`, otherwise sets the pending heading to "Check your email to verify your account" (`pending_verification`) or "Check your email to sign back in" (`pending_reauth`) and shows the pending state.
+   - `onBack()` resets `pendingHeading` and `loading` so returning to the form is clean.
+3. Angular dev build clean (`ng build --configuration development`).
+
+### Why this matters
+
+Closes the security gap where any visitor who knew or guessed a verified user's email could establish a full session via `/auth/login` alone. After this change, every new session — including for already-verified users — must be initiated by clicking a magic link delivered to the inbox.
+
+### Note on production state
+
+Plan execution made code changes only; production is still broken (separate issue from earlier this session — the live container app was never wired to SQLite, no volume mount, env vars still reference deleted SQL Server). That fix is pending user direction and is unrelated to this plan.

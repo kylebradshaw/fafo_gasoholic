@@ -91,9 +91,9 @@ Update the production deploy pipeline so the container app runs against SQLite o
 - [x] `azure-deploy.yml` includes a pre-deploy step that downloads the SQLite file from Azure Files, dumps all tables to CSV, and uploads CSVs as GitHub Actions artifacts
 - [x] CSV backup artifacts have configurable retention
 - [x] Dockerfile remains compatible with Azure Files SMB mount at `/data`
-- [ ] Container app deploys successfully and serves traffic using SQLite
-- [ ] Health endpoint returns 200 after deploy
-- [ ] Smoke tests pass against the deployed container
+- [x] Container app deploys successfully and serves traffic using SQLite
+- [x] Health endpoint returns 200 after deploy
+- [x] Smoke tests pass against the deployed container
 - [x] `DEPLOYMENT.md` updated — Remove Azure SQL provisioning steps, SessionCache table creation, `DATABASE_PROVIDER` references; replace with SQLite on Azure Files architecture
 - [x] `AZURE_SETUP_CHECKLIST.md` updated — Remove Step 1.5 (Azure SQL Database), update troubleshooting (remove SqlConnection references), update cost table, update Quick Reference table (remove Azure SQL row)
 - [x] `infra/README.md` updated — Reflect SQLite + Azure Files instead of Azure SQL in Bicep description
@@ -110,10 +110,10 @@ Delete unused Azure resources that were only needed for SQL Server. Remove the o
 
 ### Acceptance criteria
 
-- [ ] Azure SQL Server (`gasoholic-sql`) deleted
-- [ ] Azure SQL Database (`gasoholic` on `gasoholic-sql`) deleted
-- [ ] Duplicate container registry (`gasoholicgasacr`) deleted
-- [ ] Key Vault SQL Server password secret removed
-- [ ] `.github/workflows/migrate-sqlserver-to-sqlite.yml` deleted from repo
-- [ ] `.claude/AZURE.md` updated — Remove Azure SQL references, update architecture notes for SQLite
-- [ ] No remaining references to SQL Server in the codebase (connection strings, env vars, comments)
+- [x] Azure SQL Server (`gasoholic-sql`) deleted
+- [x] Azure SQL Database (`gasoholic` on `gasoholic-sql`) deleted
+- [x] Duplicate container registry (`gasoholicgasacr`) deleted
+- [x] Key Vault SQL Server password secret removed
+- [x] `.github/workflows/migrate-sqlserver-to-sqlite.yml` deleted from repo
+- [x] `.claude/AZURE.md` updated — Remove Azure SQL references, update architecture notes for SQLite
+- [x] No remaining references to SQL Server in the codebase (connection strings, env vars, comments)

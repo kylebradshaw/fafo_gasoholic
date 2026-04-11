@@ -12,6 +12,16 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = "Email is required" });
 
             var email = req.Email.Trim().ToLowerInvariant();
+
+            // If the caller already has an active session for this email, no magic link needed.
+            var sessionUserId = ctx.Session.GetInt32(UserIdKey);
+            if (sessionUserId is not null)
+            {
+                var sessionUser = await db.Users.FindAsync(sessionUserId.Value);
+                if (sessionUser is not null && sessionUser.EmailVerified && sessionUser.Email == email)
+                    return Results.Ok(new { status = "ok", email = sessionUser.Email });
+            }
+
             var user = await db.Users
                 .Include(u => u.VerificationTokens)
                 .FirstOrDefaultAsync(u => u.Email == email);
@@ -23,18 +33,15 @@ public static class AuthEndpoints
                 await db.SaveChangesAsync();
             }
 
-            if (user.EmailVerified)
-            {
-                ctx.Session.SetInt32(UserIdKey, user.Id);
-                return Results.Ok(new { status = "ok", email = user.Email });
-            }
+            // Verified users re-authenticating get "pending_reauth"; new users get "pending_verification".
+            var pendingStatus = user.EmailVerified ? "pending_reauth" : "pending_verification";
 
-            // Unverified: check for an active (unused, non-expired) token
+            // If an active (unused, non-expired) token already exists, don't send another email.
             var hasActiveToken = user.VerificationTokens
                 .Any(t => t.UsedAt is null && t.ExpiresAt > DateTime.UtcNow);
 
             if (hasActiveToken)
-                return Results.Accepted(null, new { status = "pending" });
+                return Results.Accepted(null, new { status = pendingStatus });
 
             // Generate and send new magic link
             var token = Guid.NewGuid().ToString("N");
@@ -50,7 +57,7 @@ public static class AuthEndpoints
             var baseUrl = GetBaseUrl(ctx);
             await emailSender.SendMagicLinkAsync(user.Email, token, baseUrl);
 
-            return Results.Accepted(null, new { status = "pending" });
+            return Results.Accepted(null, new { status = pendingStatus });
         });
 
         app.MapGet("/auth/verify", async (string token, AppDbContext db, HttpContext ctx) =>
@@ -75,7 +82,7 @@ public static class AuthEndpoints
             }
             catch
             {
-                // If LastSignIn column type is wrong (SQLite TEXT on SQL Server), retry without it
+                // Retry without LastSignIn if column type causes a write error
                 db.Entry(vt.User).Property(u => u.LastSignIn).IsModified = false;
                 await db.SaveChangesAsync();
             }
@@ -90,9 +97,21 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = "Email is required" });
 
             var email = req.Email.Trim().ToLowerInvariant();
-            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user is null || user.EmailVerified)
+            var user = await db.Users
+                .Include(u => u.VerificationTokens)
+                .FirstOrDefaultAsync(u => u.Email == email);
+            if (user is null)
                 return Results.Ok(new { status = "ok" });  // Don't reveal whether user exists
+
+            // Verified users may resend only if they're mid re-auth (have an active unused token).
+            // Without that guard, anyone could trigger emails to any verified address.
+            if (user.EmailVerified)
+            {
+                var hasActiveTokenForReauth = user.VerificationTokens
+                    .Any(t => t.UsedAt is null && t.ExpiresAt > DateTime.UtcNow);
+                if (!hasActiveTokenForReauth)
+                    return Results.Ok(new { status = "ok" });
+            }
 
             var cutoff = DateTime.UtcNow.AddHours(-1);
             var recentCount = await db.VerificationTokens

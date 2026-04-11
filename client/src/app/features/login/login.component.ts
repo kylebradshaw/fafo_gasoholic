@@ -38,7 +38,7 @@ import { AuthService } from '../../core/services/auth.service';
       <!-- Verification pending state -->
       <div id="pendingState" [style.display]="showLogin() ? 'none' : 'block'">
         <div class="pending-icon">✉️</div>
-        <p class="subtitle">Check your inbox</p>
+        <p class="subtitle">{{ pendingHeading() }}</p>
         <p class="pending-msg">
           We sent a sign-in link to <span class="pending-email" id="pendingEmail">{{ pendingEmail() }}</span>.
           Click the link in the email to continue — it expires in 24 hours.
@@ -220,6 +220,7 @@ export class LoginComponent implements OnInit {
   submitBtnText = signal('Sign In');
   pendingEmail = signal('');
   cooldownMsg = signal('');
+  pendingHeading = signal('Check your inbox');
 
   ngOnInit() {
     // If already logged in, redirect to app
@@ -237,21 +238,25 @@ export class LoginComponent implements OnInit {
     this.errorMsg.set('');
 
     try {
-      await this.authService.login(email);
-      // If login succeeds, redirect to app
-      this.router.navigate(['/app/log']);
-    } catch (err: any) {
-      const status = err.status;
-      if (status === 202) {
-        // Pending verification
-        this.pendingEmail.set(email);
-        this.showLogin.set(false);
-        this.cooldownMsg.set('');
-      } else {
-        this.errorMsg.set('Sign in failed. Please try again.');
-        this.loading.set(false);
-        this.submitBtnText.set('Sign In');
+      const result = await this.authService.login(email);
+      if (result.status === 'ok') {
+        // Active session — straight to app
+        this.router.navigate(['/app/log']);
+        return;
       }
+      // pending_verification or pending_reauth — show pending state with the right wording
+      this.pendingEmail.set(email);
+      this.pendingHeading.set(
+        result.status === 'pending_reauth'
+          ? 'Check your email to sign back in'
+          : 'Check your email to verify your account'
+      );
+      this.showLogin.set(false);
+      this.cooldownMsg.set('');
+    } catch (err: any) {
+      this.errorMsg.set('Sign in failed. Please try again.');
+      this.loading.set(false);
+      this.submitBtnText.set('Sign In');
     }
   }
 
@@ -285,5 +290,7 @@ export class LoginComponent implements OnInit {
     this.errorMsg.set('');
     this.email = '';
     this.submitBtnText.set('Sign In');
+    this.loading.set(false);
+    this.pendingHeading.set('Check your inbox');
   }
 }
