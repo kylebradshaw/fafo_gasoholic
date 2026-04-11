@@ -10,9 +10,6 @@ env:
   AZURE_CONTAINER_APP: gasoholic
   AZURE_RESOURCE_GROUP: gasoholic-rg
   ACR_NAME: gasoholicacr
-  STORAGE_ACCOUNT: gasoholicdata
-  FILE_SHARE: data
-  BACKUP_RETENTION_DAYS: 30
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -44,45 +41,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # ── Pre-deploy: backup SQLite database to CSV ─────────────────────────
-      - name: Download SQLite database from Azure Files
-        run: |
-          KEY=$(az storage account keys list \
-            --account-name ${{ env.STORAGE_ACCOUNT }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "[0].value" -o tsv)
-          echo "::add-mask::$KEY"
-
-          mkdir -p backup
-          az storage file download \
-            --account-name ${{ env.STORAGE_ACCOUNT }} \
-            --account-key "$KEY" \
-            --share-name ${{ env.FILE_SHARE }} \
-            --path gasoholic.db \
-            --dest backup/gasoholic.db \
-            --no-progress || echo "WARNING: No existing database found — skipping backup"
-
-      - name: Export SQLite tables to CSV
-        if: hashFiles('backup/gasoholic.db') != ''
-        run: |
-          sudo apt-get install -y sqlite3
-          mkdir -p csv-backup
-
-          TABLES=$(sqlite3 backup/gasoholic.db ".tables")
-          for TABLE in $TABLES; do
-            sqlite3 -header -csv backup/gasoholic.db "SELECT * FROM $TABLE;" > "csv-backup/${TABLE}.csv"
-            ROWS=$(sqlite3 backup/gasoholic.db "SELECT COUNT(*) FROM $TABLE")
-            echo "$TABLE: $ROWS rows"
-          done
-
-      - name: Upload CSV backup artifacts
-        if: hashFiles('csv-backup/*.csv') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: pre-deploy-csv-backup-${{ github.sha }}
-          path: csv-backup/
-          retention-days: ${{ env.BACKUP_RETENTION_DAYS }}
-
       # ── Build and deploy ───────────────────────────────────────────────────
       - name: Login to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
@@ -102,6 +60,71 @@ jobs:
             --name ${{ env.AZURE_CONTAINER_APP }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP }}:${{ github.sha }}
+
+      # ── Post-deploy: reconcile and verify ──────────────────────────────────
+      - name: Reconcile Container App template
+        run: |
+          az containerapp show \
+            --name ${{ env.AZURE_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            -o yaml > /tmp/current-app.yaml
+
+          python3 -c "
+          import yaml, sys
+          with open('/tmp/current-app.yaml') as f:
+              data = yaml.safe_load(f)
+          tpl = data.get('properties', {}).get('template', {})
+          dirty = False
+          if tpl.get('volumes'):
+              tpl['volumes'] = []
+              dirty = True
+          for c in tpl.get('containers', []):
+              if c.get('volumeMounts'):
+                  del c['volumeMounts']
+                  dirty = True
+          if dirty:
+              with open('/tmp/clean-app.yaml', 'w') as f:
+                  yaml.dump(data, f, default_flow_style=False)
+              sys.exit(0)
+          else:
+              sys.exit(2)
+          " && {
+            echo "Removing stale volumes and volume mounts..."
+            az containerapp update \
+              --name ${{ env.AZURE_CONTAINER_APP }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yaml /tmp/clean-app.yaml
+          } || {
+            RC=$?
+            if [ "$RC" -eq 2 ]; then
+              echo "No volumes found — template is already clean."
+            else
+              exit "$RC"
+            fi
+          }
+
+      - name: Verify Cosmos wiring
+        run: |
+          COSMOS_ENV=$(az containerapp show \
+            --name ${{ env.AZURE_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].env[?name=='ConnectionStrings__Cosmos'].{name:name, secretRef:secretRef}" -o json)
+
+          echo "Cosmos env binding: $COSMOS_ENV"
+
+          if echo "$COSMOS_ENV" | grep -q "cosmos-connection"; then
+            echo "✓ ConnectionStrings__Cosmos is bound to cosmos-connection secret."
+          else
+            echo "✗ FATAL: ConnectionStrings__Cosmos is missing or not bound to cosmos-connection!"
+            exit 1
+          fi
+
+      - name: Tag legacy storage account
+        run: |
+          az storage account update \
+            --name gasoholicdata \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --tags legacy=true status=unused-post-cosmos-pivot
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
