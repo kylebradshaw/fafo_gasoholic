@@ -38,6 +38,7 @@ import { AutoModalComponent } from './auto-modal/auto-modal.component';
         [isOpen]="showModal()"
         [mode]="modalMode()"
         [auto]="selectedAuto()"
+        [submitting]="submitting()"
         (close)="closeModal()"
         (save)="onSave($event)"
       ></app-auto-modal>
@@ -177,6 +178,7 @@ export class AutosComponent {
   showModal = signal(false);
   modalMode = signal<'add' | 'edit'>('add');
   selectedAuto = signal<any>(null);
+  submitting = signal(false);
 
   openAddModal() {
     this.modalMode.set('add');
@@ -196,6 +198,8 @@ export class AutosComponent {
   }
 
   async onSave(data: any) {
+    if (this.submitting()) return;
+    this.submitting.set(true);
     try {
       if (this.modalMode() === 'add') {
         await this.autosService.createAuto(data);
@@ -207,6 +211,8 @@ export class AutosComponent {
       this.closeModal();
     } catch (err) {
       this.toastService.show('Failed to save auto', 'error');
+    } finally {
+      this.submitting.set(false);
     }
   }
 

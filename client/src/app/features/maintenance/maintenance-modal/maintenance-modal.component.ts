@@ -55,7 +55,7 @@ const MAINTENANCE_TYPES = [
             </div>
             <div class="form-actions">
               <button type="button" (click)="onClose()" class="btn-cancel">Cancel</button>
-              <button type="submit" [disabled]="!form.valid" class="btn-save">Save</button>
+              <button type="submit" [disabled]="!form.valid || submitting" class="btn-save">{{ submitting ? 'Saving…' : 'Save' }}</button>
             </div>
           </form>
         </div>
@@ -220,6 +220,7 @@ export class MaintenanceModalComponent {
   @Input() isOpen = false;
   @Input() mode: 'add' | 'edit' = 'add';
   @Input() record: MaintenanceRecord | null = null;
+  @Input() submitting = false;
   @Output() close = new EventEmitter<void>();
   @Output() save = new EventEmitter<any>();
 
@@ -267,6 +268,7 @@ export class MaintenanceModalComponent {
   }
 
   onSubmit() {
+    if (this.submitting) return;
     if (this.form.valid) {
       const value = this.form.value;
       this.save.emit({

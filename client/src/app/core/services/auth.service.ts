@@ -61,6 +61,23 @@ export class AuthService {
     }
   }
 
+  async verifyCode(email: string, code: string): Promise<{ email: string }> {
+    this.loadingSignal.set(true);
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ status: 'ok'; email: string }>(
+          '/auth/verify',
+          { email, code },
+          { withCredentials: true }
+        )
+      );
+      this.userSignal.set({ email: response.email });
+      return { email: response.email };
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
   async logout(): Promise<void> {
     this.loadingSignal.set(true);
     try {

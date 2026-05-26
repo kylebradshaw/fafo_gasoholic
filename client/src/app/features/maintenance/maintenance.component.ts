@@ -61,6 +61,7 @@ import { MaintenanceModalComponent } from './maintenance-modal/maintenance-modal
           [isOpen]="showModal()"
           [mode]="modalMode()"
           [record]="selectedRecord()"
+          [submitting]="submitting()"
           (close)="closeModal()"
           (save)="onSave($event)"
         ></app-maintenance-modal>
@@ -219,6 +220,7 @@ export class MaintenanceComponent {
   showModal = signal(false);
   modalMode = signal<'add' | 'edit'>('add');
   selectedRecord = signal<MaintenanceRecord | null>(null);
+  submitting = signal(false);
 
   constructor() {
     effect(async () => {
@@ -251,9 +253,11 @@ export class MaintenanceComponent {
   }
 
   async onSave(data: any) {
+    if (this.submitting()) return;
     const autoId = this.autosService.currentAutoId();
     if (!autoId) return;
 
+    this.submitting.set(true);
     try {
       if (this.modalMode() === 'add') {
         await this.maintenanceService.createRecord(autoId, data);
@@ -265,6 +269,8 @@ export class MaintenanceComponent {
       this.closeModal();
     } catch (err) {
       this.toastService.show('Failed to save maintenance record', 'error');
+    } finally {
+      this.submitting.set(false);
     }
   }
 

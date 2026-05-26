@@ -40,11 +40,34 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="pending-icon">✉️</div>
         <p class="subtitle">{{ pendingHeading() }}</p>
         <p class="pending-msg">
-          We sent a sign-in link to <span class="pending-email" id="pendingEmail">{{ pendingEmail() }}</span>.
-          Click the link in the email to continue — it expires in 24 hours.
+          We sent a 6-digit code to <span class="pending-email" id="pendingEmail">{{ pendingEmail() }}</span>.
+          Enter it below to sign in — it expires in 30 minutes.
         </p>
+        <form id="verifyForm" (ngSubmit)="onVerify()">
+          <label for="code">Sign-in code</label>
+          <input
+            type="text"
+            id="code"
+            name="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]*"
+            maxlength="6"
+            placeholder="123456"
+            [(ngModel)]="code"
+            (keydown.enter)="onVerify()"
+            required
+            autofocus
+          >
+          <button type="submit" id="verifyBtn" [disabled]="loading() || code.length !== 6">
+            {{ verifyBtnText() }}
+          </button>
+          <p class="error" [style.display]="verifyError() ? 'block' : 'none'">
+            {{ verifyError() }}
+          </p>
+        </form>
         <button class="btn-secondary" id="resendBtn" (click)="onResend()" [disabled]="loading()">
-          Resend link
+          Resend code
         </button>
         <p class="cooldown-msg" id="cooldownMsg" [style.display]="cooldownMsg() ? 'block' : 'none'">
           {{ cooldownMsg() }}
@@ -104,7 +127,8 @@ import { AuthService } from '../../core/services/auth.service';
       transition: color 0.3s;
     }
 
-    input[type="email"] {
+    input[type="email"],
+    input[type="text"] {
       width: 100%;
       padding: 0.5rem 0.75rem;
       border: 1px solid var(--border-color);
@@ -116,7 +140,18 @@ import { AuthService } from '../../core/services/auth.service';
       transition: border-color 0.15s, background-color 0.3s, color 0.3s;
     }
 
-    input[type="email"]:focus { border-color: var(--primary-color); }
+    input[type="email"]:focus,
+    input[type="text"]:focus { border-color: var(--primary-color); }
+
+    #verifyForm input[type="text"] {
+      text-align: center;
+      letter-spacing: 0.4em;
+      font-size: 1.5rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding-left: 0.4em;
+    }
+
+    #verifyForm { margin-bottom: 1rem; }
 
     button[type="submit"],
     .btn-secondary {
@@ -214,10 +249,13 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
 
   email = '';
+  code = '';
   showLogin = signal(true);
   loading = signal(false);
   errorMsg = signal('');
+  verifyError = signal('');
   submitBtnText = signal('Sign In');
+  verifyBtnText = signal('Verify');
   pendingEmail = signal('');
   cooldownMsg = signal('');
   pendingHeading = signal('Check your inbox');
@@ -244,19 +282,59 @@ export class LoginComponent implements OnInit {
         this.router.navigate(['/app/log']);
         return;
       }
-      // pending_verification or pending_reauth — show pending state with the right wording
+      // pending_verification or pending_reauth — show code entry with the right wording
       this.pendingEmail.set(email);
       this.pendingHeading.set(
         result.status === 'pending_reauth'
-          ? 'Check your email to sign back in'
-          : 'Check your email to verify your account'
+          ? 'Enter your code to sign back in'
+          : 'Enter your code to verify your account'
       );
+      this.code = '';
+      this.verifyError.set('');
+      this.verifyBtnText.set('Verify');
       this.showLogin.set(false);
       this.cooldownMsg.set('');
     } catch (err: any) {
       this.errorMsg.set('Sign in failed. Please try again.');
+    } finally {
       this.loading.set(false);
       this.submitBtnText.set('Sign In');
+    }
+  }
+
+  async onVerify() {
+    const code = this.code.trim();
+    if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      this.verifyError.set('Enter the 6-digit code from your email.');
+      return;
+    }
+    if (this.loading()) return;
+    this.loading.set(true);
+    this.verifyError.set('');
+    this.verifyBtnText.set('Verifying...');
+    try {
+      await this.authService.verifyCode(this.pendingEmail(), code);
+      this.router.navigate(['/app/log']);
+    } catch (err: any) {
+      const body = err?.error;
+      const errorCode = typeof body === 'object' && body !== null ? body.error : undefined;
+      if (errorCode === 'invalid_code') {
+        const remaining = body?.attemptsRemaining;
+        this.verifyError.set(
+          typeof remaining === 'number'
+            ? `That code didn't match. ${remaining} ${remaining === 1 ? 'try' : 'tries'} left.`
+            : "That code didn't match."
+        );
+      } else if (errorCode === 'too_many_attempts') {
+        this.verifyError.set('Too many wrong attempts. Tap "Resend code" for a new one.');
+      } else if (errorCode === 'code_expired') {
+        this.verifyError.set('That code has expired or was already used. Tap "Resend code".');
+      } else {
+        this.verifyError.set('Verification failed. Please try again.');
+      }
+    } finally {
+      this.loading.set(false);
+      this.verifyBtnText.set('Verify');
     }
   }
 
@@ -272,9 +350,11 @@ export class LoginComponent implements OnInit {
         body: JSON.stringify({ email: this.pendingEmail() })
       }).then(res => {
         if (res.status === 429) {
-          this.cooldownMsg.set('Too many attempts. Please wait an hour before requesting another link.');
+          this.cooldownMsg.set('Too many attempts. Please wait an hour before requesting another code.');
         } else {
-          this.cooldownMsg.set('Link sent! Check your inbox (or spam folder).');
+          this.cooldownMsg.set('Code sent! Check your inbox (or spam folder).');
+          this.code = '';
+          this.verifyError.set('');
         }
       });
     } catch {
@@ -288,8 +368,11 @@ export class LoginComponent implements OnInit {
   onBack() {
     this.showLogin.set(true);
     this.errorMsg.set('');
+    this.verifyError.set('');
     this.email = '';
+    this.code = '';
     this.submitBtnText.set('Sign In');
+    this.verifyBtnText.set('Verify');
     this.loading.set(false);
     this.pendingHeading.set('Check your inbox');
   }

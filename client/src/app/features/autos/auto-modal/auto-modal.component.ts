@@ -33,7 +33,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
             </div>
             <div class="form-actions">
               <button type="button" (click)="onClose()" class="btn-cancel">Cancel</button>
-              <button type="submit" [disabled]="!form.valid" class="btn-save">Save</button>
+              <button type="submit" [disabled]="!form.valid || submitting" class="btn-save">{{ submitting ? 'Saving…' : 'Save' }}</button>
             </div>
           </form>
         </div>
@@ -180,6 +180,7 @@ export class AutoModalComponent {
   @Input() isOpen = false;
   @Input() mode: 'add' | 'edit' = 'add';
   @Input() auto: any = null;
+  @Input() submitting = false;
   @Output() close = new EventEmitter<void>();
   @Output() save = new EventEmitter<any>();
 
@@ -207,6 +208,7 @@ export class AutoModalComponent {
   }
 
   onSubmit() {
+    if (this.submitting) return;
     if (this.form.valid) {
       this.save.emit(this.form.value);
     }

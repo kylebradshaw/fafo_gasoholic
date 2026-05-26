@@ -64,6 +64,7 @@ import { FillupModalComponent } from './fillup-modal/fillup-modal.component';
           [mode]="modalMode()"
           [fillup]="selectedFillup()"
           [autoId]="autosService.currentAutoId()"
+          [submitting]="submitting()"
           (close)="closeModal()"
           (save)="onSave($event)"
         ></app-fillup-modal>
@@ -214,6 +215,7 @@ export class FillupsComponent {
   showModal = signal(false);
   modalMode = signal<'add' | 'edit'>('add');
   selectedFillup = signal<Fillup | null>(null);
+  submitting = signal(false);
 
   constructor() {
     effect(async () => {
@@ -246,9 +248,11 @@ export class FillupsComponent {
   }
 
   async onSave(data: any) {
+    if (this.submitting()) return;
     const autoId = this.autosService.currentAutoId();
     if (!autoId) return;
 
+    this.submitting.set(true);
     try {
       if (this.modalMode() === 'add') {
         await this.fillupsService.createFillup(autoId, data);
@@ -260,6 +264,8 @@ export class FillupsComponent {
       this.closeModal();
     } catch (err) {
       this.toastService.show('Failed to save fillup', 'error');
+    } finally {
+      this.submitting.set(false);
     }
   }
 
