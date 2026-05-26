@@ -28,6 +28,9 @@ jobs:
       - name: Build (verify)
         run: dotnet build gasoholic.csproj -c Release
 
+      - name: Unit tests (incl. naming-convention lint)
+        run: dotnet test Tests/Tests.csproj -c Release --verbosity minimal
+
       # Required secret: AZURE_CREDENTIALS
       # How to create it:
       #   az ad sp create-for-rbac \

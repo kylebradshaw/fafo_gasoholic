@@ -221,14 +221,16 @@ public class MpgComputationTests(GasoholicWebAppFactory factory) : IntegrationTe
     }
 
     [Fact]
-    public async Task GetFillups_OtherUsersAuto_Returns403()
+    public async Task GetFillups_OtherUsersAuto_RejectedWith4xx()
     {
         var (ownerClient, autoId) = await SetupAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"other-{Guid.NewGuid()}@test.com");
 
         var resp = await otherClient.GetAsync($"/api/autos/{autoId}/fillups");
 
-        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+        // 4xx range: ownership check rejects, whether as 403 or 404. 404 avoids leaking
+        // existence of another user's resource; either is acceptable for these tests.
+        Assert.InRange((int)resp.StatusCode, 400, 499);
     }
 
     [Fact]

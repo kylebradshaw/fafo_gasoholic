@@ -5,7 +5,7 @@ using System.Text.Json;
 /// <summary>
 /// Integration tests for the authentication endpoints:
 ///   POST /auth/login
-///   GET  /auth/verify
+///   POST /auth/verify
 ///   POST /auth/resend
 ///   POST /auth/logout
 ///   GET  /auth/me
@@ -44,22 +44,22 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
 
         var resp = await client.PostAsJsonAsync("/auth/login", new { email });
 
-        // 202 Accepted with status "pending_verification" (new user, first-time verification)
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
         Assert.Equal("pending_verification", doc.GetProperty("status").GetString());
     }
 
     [Fact]
-    public async Task Login_NewEmail_SendsMagicLinkEmail()
+    public async Task Login_NewEmail_SendsLoginCodeEmail()
     {
         var client = CreateClient();
         var mockSender = GetMockEmailSender();
-        var email = $"magic-{Guid.NewGuid()}@test.com";
+        var email = $"code-{Guid.NewGuid()}@test.com";
 
         await client.PostAsJsonAsync("/auth/login", new { email });
 
-        Assert.Single(mockSender.SentMagicLinks, m => m.Email == email);
+        var sent = Assert.Single(mockSender.SentLoginCodes, m => m.Email == email);
+        Assert.Matches("^[0-9]{6}$", sent.Code);
     }
 
     [Fact]
@@ -69,16 +69,13 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var mockSender = GetMockEmailSender();
         var email = $"pending-{Guid.NewGuid()}@test.com";
 
-        // First login creates user + sends token
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var countBefore = mockSender.SentMagicLinks.Count;
+        var countBefore = mockSender.SentLoginCodes.Count;
 
-        // Second login — user is still unverified and has an active token
         var resp = await client.PostAsJsonAsync("/auth/login", new { email });
 
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
-        // No new email should have been sent
-        Assert.Equal(countBefore, mockSender.SentMagicLinks.Count);
+        Assert.Equal(countBefore, mockSender.SentLoginCodes.Count);
     }
 
     [Fact]
@@ -88,7 +85,6 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var mockSender = GetMockEmailSender();
         var email = $"verified-session-{Guid.NewGuid()}@test.com";
 
-        // Use dev-login to create a pre-verified user with an active session on this client
         var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
         {
             Content = JsonContent.Create(new { email }),
@@ -96,22 +92,20 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         };
         await client.SendAsync(devReq);
 
-        var countBefore = mockSender.SentMagicLinks.Count;
+        var countBefore = mockSender.SentLoginCodes.Count;
 
-        // Login on the SAME client (same session cookie) — should return OK without sending email
         var resp = await client.PostAsJsonAsync("/auth/login", new { email });
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
         Assert.Equal("ok", doc.GetProperty("status").GetString());
         Assert.Equal(email, doc.GetProperty("email").GetString());
-        Assert.Equal(countBefore, mockSender.SentMagicLinks.Count);
+        Assert.Equal(countBefore, mockSender.SentLoginCodes.Count);
     }
 
     [Fact]
-    public async Task Login_VerifiedUserWithoutSession_SendsMagicLinkAndReturnsPendingReauth()
+    public async Task Login_VerifiedUserWithoutSession_SendsCodeAndReturnsPendingReauth()
     {
-        // Bootstrap: create a verified user via dev-login on one client
         var setupClient = CreateClient();
         var mockSender = GetMockEmailSender();
         var email = $"verified-reauth-{Guid.NewGuid()}@test.com";
@@ -123,36 +117,34 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         };
         await setupClient.SendAsync(devReq);
 
-        var countBefore = mockSender.SentMagicLinks.Count;
+        var countBefore = mockSender.SentLoginCodes.Count;
 
-        // A FRESH client (no session cookie) tries to log in as the verified user
         var freshClient = CreateClient();
         var resp = await freshClient.PostAsJsonAsync("/auth/login", new { email });
 
-        // Should require re-auth — magic link sent, 202 pending_reauth
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
         Assert.Equal("pending_reauth", doc.GetProperty("status").GetString());
-        Assert.Equal(countBefore + 1, mockSender.SentMagicLinks.Count);
-        Assert.Equal(email, mockSender.SentMagicLinks.Last().Email);
+        Assert.Equal(countBefore + 1, mockSender.SentLoginCodes.Count);
+        Assert.Equal(email, mockSender.SentLoginCodes.Last().Email);
     }
 
     [Fact]
-    public async Task Login_FullReauthLifecycle_RequiresMagicLinkAfterLogout()
+    public async Task Login_FullReauthLifecycle_RequiresCodeAfterLogout()
     {
         var mockSender = GetMockEmailSender();
         var email = $"reauth-lifecycle-{Guid.NewGuid()}@test.com";
 
-        // 1. New user logs in → pending_verification + magic link
+        // 1. New user logs in → pending_verification + code
         var client = CreateClient();
         var login1 = await client.PostAsJsonAsync("/auth/login", new { email });
         Assert.Equal(HttpStatusCode.Accepted, login1.StatusCode);
         Assert.Equal("pending_verification", (await ReadJsonAsync(login1)).GetProperty("status").GetString());
 
-        // 2. Click magic link → verified, session established
-        var token1 = mockSender.SentMagicLinks.Last(m => m.Email == email).Token;
-        var verify1 = await client.GetAsync($"/auth/verify?token={token1}");
-        Assert.Equal(HttpStatusCode.Redirect, verify1.StatusCode);
+        // 2. Submit code → verified, session established
+        var code1 = mockSender.SentLoginCodes.Last(m => m.Email == email).Code;
+        var verify1 = await client.PostAsJsonAsync("/auth/verify", new { email, code = code1 });
+        Assert.Equal(HttpStatusCode.OK, verify1.StatusCode);
 
         // 3. /auth/me works
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/auth/me")).StatusCode);
@@ -161,18 +153,18 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         await client.PostAsync("/auth/logout", null);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/auth/me")).StatusCode);
 
-        // 5. Login again (same client, no session) → must get a new magic link as pending_reauth
+        // 5. Login again → new pending_reauth code
         var login2 = await client.PostAsJsonAsync("/auth/login", new { email });
         Assert.Equal(HttpStatusCode.Accepted, login2.StatusCode);
         Assert.Equal("pending_reauth", (await ReadJsonAsync(login2)).GetProperty("status").GetString());
 
-        // 6. New token must be different from the first (the first was already used)
-        var token2 = mockSender.SentMagicLinks.Last(m => m.Email == email).Token;
-        Assert.NotEqual(token1, token2);
+        // 6. New code must differ from the first (the first was already used)
+        var code2 = mockSender.SentLoginCodes.Last(m => m.Email == email).Code;
+        Assert.NotEqual(code1, code2);
 
-        // 7. Click new magic link → session restored
-        var verify2 = await client.GetAsync($"/auth/verify?token={token2}");
-        Assert.Equal(HttpStatusCode.Redirect, verify2.StatusCode);
+        // 7. Submit new code → session restored
+        var verify2 = await client.PostAsJsonAsync("/auth/verify", new { email, code = code2 });
+        Assert.Equal(HttpStatusCode.OK, verify2.StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/auth/me")).StatusCode);
     }
 
@@ -185,141 +177,122 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
 
         await client.PostAsJsonAsync("/auth/login", new { email });
 
-        var sent = mockSender.SentMagicLinks.LastOrDefault();
+        var sent = mockSender.SentLoginCodes.LastOrDefault();
         Assert.Equal(email.ToLowerInvariant(), sent.Email);
-    }
-
-    // ── magic-link origin ───────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Login_MagicLinkBaseUrl_UsesOriginHeader()
-    {
-        var client = CreateClient();
-        var mockSender = GetMockEmailSender();
-        var email = $"origin-{Guid.NewGuid()}@test.com";
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/auth/login")
-        {
-            Content = JsonContent.Create(new { email }),
-            Headers = { { "Origin", "http://localhost:4200" } }
-        };
-        await client.SendAsync(request);
-
-        var sent = mockSender.SentMagicLinks.Last();
-        Assert.Equal("http://localhost:4200", sent.BaseUrl);
-    }
-
-    [Fact]
-    public async Task Login_MagicLinkBaseUrl_FallsBackToRequestHost_WhenNoOrigin()
-    {
-        var client = CreateClient();
-        var mockSender = GetMockEmailSender();
-        var email = $"noorigin-{Guid.NewGuid()}@test.com";
-
-        await client.PostAsJsonAsync("/auth/login", new { email });
-
-        var sent = mockSender.SentMagicLinks.Last();
-        // Should fall back to the request host (the test server's address)
-        Assert.StartsWith("http://", sent.BaseUrl);
-        Assert.DoesNotContain("4200", sent.BaseUrl);
-    }
-
-    [Fact]
-    public async Task Resend_MagicLinkBaseUrl_UsesOriginHeader()
-    {
-        var client = CreateClient();
-        var mockSender = GetMockEmailSender();
-        var email = $"resend-origin-{Guid.NewGuid()}@test.com";
-
-        // Create user first
-        await client.PostAsJsonAsync("/auth/login", new { email });
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "/auth/resend")
-        {
-            Content = JsonContent.Create(new { email }),
-            Headers = { { "Origin", "http://localhost:4200" } }
-        };
-        await client.SendAsync(request);
-
-        var sent = mockSender.SentMagicLinks.Last();
-        Assert.Equal("http://localhost:4200", sent.BaseUrl);
     }
 
     // ── /auth/verify ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Verify_ValidToken_RedirectsToApp()
+    public async Task Verify_ValidCode_Returns200AndStartsSession()
     {
         var client = CreateClient();
         var mockSender = GetMockEmailSender();
         var email = $"verify-ok-{Guid.NewGuid()}@test.com";
 
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var token = mockSender.SentMagicLinks.Last().Token;
+        var code = mockSender.SentLoginCodes.Last().Code;
 
-        var resp = await client.GetAsync($"/auth/verify?token={token}");
+        var resp = await client.PostAsJsonAsync("/auth/verify", new { email, code });
 
-        // Expect redirect to /app (we set AllowAutoRedirect = false)
-        Assert.Equal(HttpStatusCode.Redirect, resp.StatusCode);
-        Assert.Contains("/app", resp.Headers.Location?.ToString() ?? "");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var doc = await ReadJsonAsync(resp);
+        Assert.Equal("ok", doc.GetProperty("status").GetString());
+        Assert.Equal(email, doc.GetProperty("email").GetString());
+
+        // Same client cookie is now authenticated
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/auth/me")).StatusCode);
     }
 
     [Fact]
-    public async Task Verify_ValidToken_SessionWorksForApiCalls()
+    public async Task Verify_ValidCode_SessionWorksForApiCalls()
     {
         var client = CreateClient();
         var mockSender = GetMockEmailSender();
         var email = $"verify-session-{Guid.NewGuid()}@test.com";
 
-        // Login to create user + token
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var token = mockSender.SentMagicLinks.Last().Token;
+        var code = mockSender.SentLoginCodes.Last().Code;
 
-        // Verify — sets session cookie on the same client
-        var verifyResp = await client.GetAsync($"/auth/verify?token={token}");
-        Assert.Equal(HttpStatusCode.Redirect, verifyResp.StatusCode);
+        var verifyResp = await client.PostAsJsonAsync("/auth/verify", new { email, code });
+        Assert.Equal(HttpStatusCode.OK, verifyResp.StatusCode);
 
-        // The same client (same cookie jar) should now be authenticated
-        var meResp = await client.GetAsync("/auth/me");
-        Assert.Equal(HttpStatusCode.OK, meResp.StatusCode);
-
-        // And should be able to create an auto (the exact scenario that failed)
         var autoResp = await client.PostAsJsonAsync("/api/autos",
             new { brand = "Toyota", model = "Highlander", plate = "BJK715", odometer = 93005m });
         Assert.Equal(HttpStatusCode.Created, autoResp.StatusCode);
     }
 
     [Fact]
-    public async Task Verify_InvalidToken_Returns400WithError()
+    public async Task Verify_UnknownEmail_Returns400()
     {
         var client = CreateClient();
 
-        var resp = await client.GetAsync("/auth/verify?token=nonexistenttoken");
+        var resp = await client.PostAsJsonAsync("/auth/verify",
+            new { email = $"ghost-{Guid.NewGuid()}@test.com", code = "123456" });
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
-        Assert.Equal("token_not_found", doc.GetProperty("error").GetString());
+        Assert.Equal("invalid_code", doc.GetProperty("error").GetString());
     }
 
     [Fact]
-    public async Task Verify_AlreadyUsedToken_Returns400()
+    public async Task Verify_WrongCode_Returns400AndIncrementsAttempts()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"verify-wrong-{Guid.NewGuid()}@test.com";
+
+        await client.PostAsJsonAsync("/auth/login", new { email });
+        var realCode = mockSender.SentLoginCodes.Last().Code;
+        var wrongCode = realCode == "000000" ? "999999" : "000000";
+
+        var resp = await client.PostAsJsonAsync("/auth/verify", new { email, code = wrongCode });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        var doc = await ReadJsonAsync(resp);
+        Assert.Equal("invalid_code", doc.GetProperty("error").GetString());
+        Assert.Equal(4, doc.GetProperty("attemptsRemaining").GetInt32());
+    }
+
+    [Fact]
+    public async Task Verify_FiveWrongCodes_LocksToken()
+    {
+        var client = CreateClient();
+        var mockSender = GetMockEmailSender();
+        var email = $"verify-locked-{Guid.NewGuid()}@test.com";
+
+        await client.PostAsJsonAsync("/auth/login", new { email });
+        var realCode = mockSender.SentLoginCodes.Last().Code;
+        var wrongCode = realCode == "000000" ? "999999" : "000000";
+
+        for (int i = 0; i < 5; i++)
+            await client.PostAsJsonAsync("/auth/verify", new { email, code = wrongCode });
+
+        // Even the correct code now fails because the token is locked / used
+        var resp = await client.PostAsJsonAsync("/auth/verify", new { email, code = realCode });
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        var doc = await ReadJsonAsync(resp);
+        Assert.Contains(doc.GetProperty("error").GetString(),
+            new[] { "too_many_attempts", "code_expired" });
+    }
+
+    [Fact]
+    public async Task Verify_AlreadyUsedCode_Returns400()
     {
         var client = CreateClient();
         var mockSender = GetMockEmailSender();
         var email = $"verify-used-{Guid.NewGuid()}@test.com";
 
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var token = mockSender.SentMagicLinks.Last().Token;
+        var code = mockSender.SentLoginCodes.Last().Code;
 
-        // First verify — should succeed
-        await client.GetAsync($"/auth/verify?token={token}");
+        var first = await client.PostAsJsonAsync("/auth/verify", new { email, code });
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
 
-        // Second verify with the same token
-        var resp = await client.GetAsync($"/auth/verify?token={token}");
-
+        var resp = await client.PostAsJsonAsync("/auth/verify", new { email, code });
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         var doc = await ReadJsonAsync(resp);
-        Assert.Equal("token_used", doc.GetProperty("error").GetString());
+        Assert.Equal("code_expired", doc.GetProperty("error").GetString());
     }
 
     // ── /auth/resend ───────────────────────────────────────────────────────────
@@ -351,7 +324,6 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var client = CreateClient();
         var email = $"resend-verified-{Guid.NewGuid()}@test.com";
 
-        // Create a pre-verified user via dev-login
         var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
         {
             Content = JsonContent.Create(new { email }),
@@ -365,12 +337,11 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     }
 
     [Fact]
-    public async Task Resend_VerifiedUserMidReauth_SendsNewMagicLink()
+    public async Task Resend_VerifiedUserMidReauth_SendsNewCode()
     {
         var mockSender = GetMockEmailSender();
         var email = $"resend-reauth-{Guid.NewGuid()}@test.com";
 
-        // Bootstrap a verified user (dev-login on a separate client so we don't carry a session)
         var setupClient = CreateClient();
         var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
         {
@@ -379,16 +350,14 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         };
         await setupClient.SendAsync(devReq);
 
-        // Fresh client logs in → triggers a re-auth magic link (verified user, no session)
         var client = CreateClient();
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var countAfterLogin = mockSender.SentMagicLinks.Count;
+        var countAfterLogin = mockSender.SentLoginCodes.Count;
 
-        // Now resend should work because the user has an active unused token
         var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
 
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
-        Assert.Equal(countAfterLogin + 1, mockSender.SentMagicLinks.Count);
+        Assert.Equal(countAfterLogin + 1, mockSender.SentLoginCodes.Count);
     }
 
     [Fact]
@@ -396,7 +365,6 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     {
         var email = $"resend-reauth-rl-{Guid.NewGuid()}@test.com";
 
-        // Bootstrap verified user
         var setupClient = CreateClient();
         var devReq = new HttpRequestMessage(HttpMethod.Post, "/auth/dev-login")
         {
@@ -406,33 +374,29 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         await setupClient.SendAsync(devReq);
 
         var client = CreateClient();
-        // Token #1 from re-auth login
         await client.PostAsJsonAsync("/auth/login", new { email });
-        // Resends #2, #3, #4 succeed
         await client.PostAsJsonAsync("/auth/resend", new { email });
         await client.PostAsJsonAsync("/auth/resend", new { email });
         await client.PostAsJsonAsync("/auth/resend", new { email });
 
-        // 5th total token request → rate limited
         var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
         Assert.Equal(HttpStatusCode.TooManyRequests, resp.StatusCode);
     }
 
     [Fact]
-    public async Task Resend_ValidUnverifiedEmail_SendsNewToken()
+    public async Task Resend_ValidUnverifiedEmail_SendsNewCode()
     {
         var client = CreateClient();
         var mockSender = GetMockEmailSender();
         var email = $"resend-valid-{Guid.NewGuid()}@test.com";
 
-        // Login to create the user
         await client.PostAsJsonAsync("/auth/login", new { email });
-        var countBefore = mockSender.SentMagicLinks.Count;
+        var countBefore = mockSender.SentLoginCodes.Count;
 
         var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
 
         Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
-        Assert.Equal(countBefore + 1, mockSender.SentMagicLinks.Count);
+        Assert.Equal(countBefore + 1, mockSender.SentLoginCodes.Count);
     }
 
     [Fact]
@@ -441,14 +405,11 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
         var client = CreateClient();
         var email = $"ratelimit-{Guid.NewGuid()}@test.com";
 
-        // Initial login counts as token #1
         await client.PostAsJsonAsync("/auth/login", new { email });
-        // Resends #2, #3, #4 should succeed
         await client.PostAsJsonAsync("/auth/resend", new { email });
         await client.PostAsJsonAsync("/auth/resend", new { email });
         await client.PostAsJsonAsync("/auth/resend", new { email });
 
-        // The 5th request (4th resend) should be rate-limited
         var resp = await client.PostAsJsonAsync("/auth/resend", new { email });
 
         Assert.Equal(HttpStatusCode.TooManyRequests, resp.StatusCode);
@@ -463,13 +424,11 @@ public class AuthEndpointTests(GasoholicWebAppFactory factory) : IntegrationTest
     {
         var client = await CreateAuthenticatedClientAsync($"logout-{Guid.NewGuid()}@test.com");
 
-        // Verify authenticated
         var meBefore = await client.GetAsync("/auth/me");
         Assert.Equal(HttpStatusCode.OK, meBefore.StatusCode);
 
         await client.PostAsync("/auth/logout", null);
 
-        // After logout, /auth/me should return 401
         var meAfter = await client.GetAsync("/auth/me");
         Assert.Equal(HttpStatusCode.Unauthorized, meAfter.StatusCode);
     }

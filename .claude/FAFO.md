@@ -557,3 +557,52 @@ Commit `90a1975`. Executed the first slice of `.claude/plans/cosmosdb.md` Phase 
 - `.claude/plans/cosmosdb.md`, `.claude/prd/cosmosdb.md`: added plan and PRD to repo.
 
 **Known follow-ups:** no `dotnet` in sandbox so build/tests not verified; int PK model reshape needed for real Cosmos; `ExecuteUpdateAsync`/`ExecuteDeleteAsync` in auth endpoints need rewriting; emulator Docker integration and `VerificationCleanupService` deletion deferred to later tasks.
+
+## 2026-05-26
+
+### Diagnose + prevent double-write of fillup/auto/maintenance entries
+
+Goal: a report that entries are being stored twice in the database. Diagnose the cause and add a cleanup tool.
+
+**Diagnosis.** The `Save` button in every entry modal is only gated by `[disabled]="!form.valid"`. The parent component (`*.component.ts onSave`) awaits the HTTP POST before closing the modal, so during the in-flight window (~1–3s on flaky mobile, the documented gas-pump use case) the button stays enabled and a second tap fires another `ngSubmit` → another POST → a duplicate row with a fresh GUID. Server endpoints (`FillupEndpoints`, `MaintenanceEndpoints`, `AutoEndpoints`) each do a single `Add`/`SaveChangesAsync` and don't dedupe. Ruled out: the ngsw `network-first` cache (read-only, GET only), the unused `SyncQueueService` (no callers), `withEventReplay()` hydration (single replay), and HTTP retry interceptors (none registered).
+
+**Prevention (client).** Added a parent-controlled `submitting` signal in `fillups`, `autos`, `maintenance` components, set true before the await and false in a `finally`. Each modal (`fillup-modal`, `auto-modal`, `maintenance-modal`) now takes a `@Input() submitting` and:
+- disables Save while submitting (`[disabled]="!form.valid || submitting"`) and shows `Saving…`
+- short-circuits `onSubmit()` if already submitting (guards against Enter-key races and stale event replays)
+
+**Cleanup (server).** Added `POST /dev/dedupe-entries` to `Endpoints/SmokeTestEndpoints.cs`, gated by the existing `X-Smoke-Test-Secret`. Body: `{ "email": "...", "dryRun": true|false }`. For every Auto owned by the user, it groups Fillups by (AutoId, FilledAt.Ticks, Odometer, Gallons, PricePerGallon, FuelType, IsPartialFill) and Maintenance by (AutoId, PerformedAt.Ticks, Type, Odometer, Cost, Notes), keeps the lexicographically smallest Id per group, and removes the rest. Dry-run by default, returns per-row keepId/deleteId so the operator can verify before applying.
+
+**Cleanup (script).** `dedupe-entries.sh` at repo root mirrors the `smoke-test.sh` invocation pattern. Usage:
+```
+./dedupe-entries.sh https://gas.sdir.cc <secret> user@example.com           # dry run
+./dedupe-entries.sh https://gas.sdir.cc <secret> user@example.com --apply   # delete
+```
+
+**Verified:** `dotnet build gasoholic.csproj` succeeds; Angular `tsc --noEmit -p tsconfig.app.json` clean. Test suite not run locally (sandbox blocks TCP bind); no schema changes so `NamingConventionTests` should be unaffected.
+
+### Replace magic-link auth with 6-digit code (kill the PWA catch-22)
+
+User reported: signing back into the installed PWA always sent a magic-link email; clicking the link opens a browser, which is *not* the PWA — so they have to re-install the app to a home-screen shortcut each time the session expires. The fix is to keep email verification but deliver a 6-digit OTP that's entered inside the PWA.
+
+**Why 6 digits, not 4:** kept the user's request but bumped the length. 6 is the OTP industry default; combined with the per-token 5-attempt cap below, it gives ~1-in-200,000 brute-force odds per code-issue cycle vs. ~1-in-2,000 at 4 digits. The code length is one constant in `AuthEndpoints.GenerateLoginCode` — flip to `D4` and `0, 10_000` if the user wants 4.
+
+**Server changes:**
+- `Models/VerificationToken.cs` — added `Attempts` (int, default 0) to the existing token row. The `Token` column now holds the 6-digit code instead of a GUID. Cosmos is schema-less so no migration needed. Shortened conceptual lifetime to 30 min (constant in AuthEndpoints, `CodeLifetime`).
+- `Services/IVerificationEmailSender.cs` + `Services/VerificationEmailSender.cs` — replaced `SendMagicLinkAsync(toEmail, token, baseUrl)` with `SendLoginCodeAsync(toEmail, code)`. Email body now shows just the code; subject "Your Gasoholic sign-in code". Dev-mode logger prints the code instead of the link.
+- `Endpoints/AuthEndpoints.cs`:
+  - `/auth/login` and `/auth/resend` now generate a code via `RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6")` (leading zeros preserved). 30 min TTL.
+  - Replaced `GET /auth/verify?token=…` (which redirected to `/app`, dragging users out of the PWA) with `POST /auth/verify { email, code }` returning `200 { status:"ok", email }`. Same session cookie behavior.
+  - Per-token brute-force cap: 5 wrong submissions and the token is marked used (`UsedAt = now`). Wrong submissions return `{ error:"invalid_code", attemptsRemaining:N }`. Used `CryptographicOperations.FixedTimeEquals` for the comparison.
+  - Look up the active token via the user's partition (`UserId == ... && UsedAt == null && ExpiresAt > now`) — no cross-partition Token scan needed since there's at most one active token per user.
+
+**Test changes:**
+- `Tests/MockEmailSender.cs` — `SentMagicLinks` → `SentLoginCodes` (List<(Email, Code)>); implements `SendLoginCodeAsync`.
+- `Tests/AuthEndpointTests.cs` — rewrote verify tests for the new POST flow; added `Verify_WrongCode_…`, `Verify_FiveWrongCodes_LocksToken`, `Verify_AlreadyUsedCode_…`. Dropped the magic-link-baseurl tests (no longer relevant). Login lifecycle now goes via `POST /auth/verify { email, code }` → `200 OK`. `Tests/IntegrationTestBase.cs` untouched (still uses `dev-login` for authed clients).
+
+**Client changes:**
+- `client/src/app/core/services/auth.service.ts` — added `verifyCode(email, code)` that POSTs `/auth/verify` and sets the user signal on success.
+- `client/src/app/features/login/login.component.ts` — pending state now shows a 6-digit code input (`inputmode="numeric"`, `autocomplete="one-time-code"`, monospace + letter-spacing) with a Verify button. Wires errors from the server: `invalid_code` shows "didn't match. N tries left", `too_many_attempts` and `code_expired` prompt the user to resend. "Resend link" → "Resend code". Headline "Check your email to verify…" → "Enter your code to verify…".
+
+**Verified:** `dotnet build` on both projects clean; Angular `ng build --configuration development` produces all chunks with no template-type errors; Angular `tsc --noEmit` clean. .NET test suite not run locally (sandbox blocks TCP socket bind in vstest runner) — run `dotnet test Tests/Tests.csproj` per the Cosmos gating rule before merge.
+
+**Note on in-flight emails:** any magic-link email sitting in inboxes from before this change will 404 the GET endpoint (it's gone). User can just request a new code.

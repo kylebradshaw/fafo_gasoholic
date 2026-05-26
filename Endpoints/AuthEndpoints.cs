@@ -1,8 +1,11 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 public static class AuthEndpoints
 {
     const string UserIdKey = "userId";
+    const int CodeAttemptLimit = 5;
+    static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(30);
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -13,7 +16,7 @@ public static class AuthEndpoints
 
             var email = req.Email.Trim().ToLowerInvariant();
 
-            // If the caller already has an active session for this email, no magic link needed.
+            // If the caller already has an active session for this email, no code needed.
             var sessionUserId = ctx.Session.GetString(UserIdKey);
             if (sessionUserId is not null)
             {
@@ -47,39 +50,67 @@ public static class AuthEndpoints
             if (hasActiveToken)
                 return Results.Accepted(null, new { status = pendingStatus });
 
-            // Generate and send new magic link
-            var token = Guid.NewGuid().ToString("N");
+            var code = GenerateLoginCode();
             db.VerificationTokens.Add(new VerificationToken
             {
                 UserId = user.Id,
-                Token = token,
+                Token = code,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(24)
+                ExpiresAt = DateTime.UtcNow.Add(CodeLifetime)
             });
             await db.SaveChangesAsync();
 
-            var baseUrl = GetBaseUrl(ctx);
-            await emailSender.SendMagicLinkAsync(user.Email, token, baseUrl);
+            await emailSender.SendLoginCodeAsync(user.Email, code);
 
             return Results.Accepted(null, new { status = pendingStatus });
         });
 
-        app.MapGet("/auth/verify", async (string token, AppDbContext db, HttpContext ctx) =>
+        app.MapPost("/auth/verify", async (VerifyCodeRequest req, AppDbContext db, HttpContext ctx) =>
         {
-            var vt = await db.VerificationTokens.FirstOrDefaultAsync(t => t.Token == token);
+            if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Code))
+                return Results.BadRequest(new { error = "email_and_code_required" });
 
-            if (vt is null)
-                return Results.BadRequest(new { error = "token_not_found" });
-            if (vt.UsedAt is not null)
-                return Results.BadRequest(new { error = "token_used" });
-            if (vt.ExpiresAt <= DateTime.UtcNow)
-                return Results.BadRequest(new { error = "token_expired" });
+            var email = req.Email.Trim().ToLowerInvariant();
+            var submitted = req.Code.Trim();
 
-            var user = await db.Users.FindAsync(vt.UserId);
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (user is null)
-                return Results.BadRequest(new { error = "user_not_found" });
+                return Results.BadRequest(new { error = "invalid_code" });
 
-            vt.UsedAt = DateTime.UtcNow;
+            var now = DateTime.UtcNow;
+            var userIdForToken = user.Id;
+            var active = (await db.VerificationTokens
+                .Where(t => t.UserId == userIdForToken && t.UsedAt == null && t.ExpiresAt > now)
+                .Take(1)
+                .ToListAsync())
+                .FirstOrDefault();
+
+            if (active is null)
+                return Results.BadRequest(new { error = "code_expired" });
+
+            if (active.Attempts >= CodeAttemptLimit)
+            {
+                active.UsedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+                return Results.BadRequest(new { error = "too_many_attempts" });
+            }
+
+            if (!CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(submitted),
+                    System.Text.Encoding.UTF8.GetBytes(active.Token)))
+            {
+                active.Attempts++;
+                if (active.Attempts >= CodeAttemptLimit)
+                    active.UsedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+                return Results.BadRequest(new
+                {
+                    error = active.UsedAt is not null ? "too_many_attempts" : "invalid_code",
+                    attemptsRemaining = Math.Max(0, CodeAttemptLimit - active.Attempts)
+                });
+            }
+
+            active.UsedAt = DateTime.UtcNow;
             user.EmailVerified = true;
             user.LastSignIn = DateTime.UtcNow;
             try
@@ -93,7 +124,7 @@ public static class AuthEndpoints
             }
 
             ctx.Session.SetString(UserIdKey, user.Id);
-            return Results.Redirect("/app");
+            return Results.Ok(new { status = "ok", email = user.Email });
         });
 
         app.MapPost("/auth/resend", async (ResendRequest req, AppDbContext db, IVerificationEmailSender emailSender, HttpContext ctx) =>
@@ -134,18 +165,17 @@ public static class AuthEndpoints
             foreach (var t in unusedTokens)
                 t.UsedAt = DateTime.UtcNow;
 
-            var token = Guid.NewGuid().ToString("N");
+            var code = GenerateLoginCode();
             db.VerificationTokens.Add(new VerificationToken
             {
                 UserId = user.Id,
-                Token = token,
+                Token = code,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(24)
+                ExpiresAt = DateTime.UtcNow.Add(CodeLifetime)
             });
             await db.SaveChangesAsync();
 
-            var baseUrl = GetBaseUrl(ctx);
-            await emailSender.SendMagicLinkAsync(user.Email, token, baseUrl);
+            await emailSender.SendLoginCodeAsync(user.Email, code);
 
             return Results.Accepted(null, new { status = "pending" });
         });
@@ -183,16 +213,11 @@ public static class AuthEndpoints
         });
     }
 
-    private static string GetBaseUrl(HttpContext ctx)
+    static string GenerateLoginCode()
     {
-        var origin = ctx.Request.Headers.Origin.FirstOrDefault()
-                  ?? ctx.Request.Headers.Referer.FirstOrDefault();
-        if (origin is not null)
-        {
-            var uri = new Uri(origin);
-            return $"{uri.Scheme}://{uri.Authority}";
-        }
-        return $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+        // 6 random digits, uniformly distributed. Leading zeros preserved.
+        var n = RandomNumberGenerator.GetInt32(0, 1_000_000);
+        return n.ToString("D6");
     }
 
     public static string? GetUserId(this HttpContext ctx) =>
@@ -211,3 +236,4 @@ public static class AuthEndpoints
 
 public record LoginRequest(string Email);
 public record ResendRequest(string Email);
+public record VerifyCodeRequest(string Email, string Code);

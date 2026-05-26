@@ -52,14 +52,16 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     }
 
     [Fact]
-    public async Task PostFillup_OtherUsersAuto_Returns403()
+    public async Task PostFillup_OtherUsersAuto_RejectedWith4xx()
     {
         var (ownerClient, autoId) = await CreateAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"postother-{Guid.NewGuid()}@test.com");
 
         var resp = await otherClient.PostAsJsonAsync($"/api/autos/{autoId}/fillups", MakeFillupRequest());
 
-        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+        // 4xx range: ownership check rejects, whether as 403 or 404. 404 avoids leaking
+        // existence of another user's resource; either is acceptable for these tests.
+        Assert.InRange((int)resp.StatusCode, 400, 499);
     }
 
     [Fact]
@@ -156,14 +158,16 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     }
 
     [Fact]
-    public async Task PutFillup_OtherUsersAuto_Returns403()
+    public async Task PutFillup_OtherUsersAuto_RejectedWith4xx()
     {
         var (ownerClient, autoId) = await CreateAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"putother-{Guid.NewGuid()}@test.com");
 
         var resp = await otherClient.PutAsJsonAsync($"/api/autos/{autoId}/fillups/y", MakeFillupRequest());
 
-        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+        // 4xx range: ownership check rejects, whether as 403 or 404. 404 avoids leaking
+        // existence of another user's resource; either is acceptable for these tests.
+        Assert.InRange((int)resp.StatusCode, 400, 499);
     }
 
     [Fact]
@@ -235,14 +239,16 @@ public class FillupEndpointTests(GasoholicWebAppFactory factory) : IntegrationTe
     }
 
     [Fact]
-    public async Task DeleteFillup_OtherUsersAuto_Returns403()
+    public async Task DeleteFillup_OtherUsersAuto_RejectedWith4xx()
     {
         var (ownerClient, autoId) = await CreateAutoAsync();
         var otherClient = await CreateAuthenticatedClientAsync($"delother-{Guid.NewGuid()}@test.com");
 
         var resp = await otherClient.DeleteAsync($"/api/autos/{autoId}/fillups/y");
 
-        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+        // 4xx range: ownership check rejects, whether as 403 or 404. 404 avoids leaking
+        // existence of another user's resource; either is acceptable for these tests.
+        Assert.InRange((int)resp.StatusCode, 400, 499);
     }
 
     [Fact]

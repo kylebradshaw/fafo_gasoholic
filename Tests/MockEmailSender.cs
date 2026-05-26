@@ -4,12 +4,12 @@ public class MockEmailSender : IVerificationEmailSender
     public string? SenderDomain => null;
     public string? SenderAddress => null;
 
-    // Track sent magic links for assertions in tests
-    public List<(string Email, string Token, string BaseUrl)> SentMagicLinks { get; } = new();
+    // Track sent login codes for assertions in tests
+    public List<(string Email, string Code)> SentLoginCodes { get; } = new();
 
-    public Task SendMagicLinkAsync(string toEmail, string token, string baseUrl)
+    public Task SendLoginCodeAsync(string toEmail, string code)
     {
-        SentMagicLinks.Add((toEmail, token, baseUrl));
+        SentLoginCodes.Add((toEmail, code));
         return Task.CompletedTask;
     }
 

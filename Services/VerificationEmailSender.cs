@@ -25,30 +25,28 @@ public class VerificationEmailSender : IVerificationEmailSender
     public string? SenderDomain => _senderDomain;
     public string? SenderAddress => _fromAddress;
 
-    public async Task SendMagicLinkAsync(string toEmail, string token, string baseUrl)
+    public async Task SendLoginCodeAsync(string toEmail, string code)
     {
-        var link = $"{baseUrl.TrimEnd('/')}/auth/verify?token={token}";
-
         if (_client is null || _fromAddress is null)
         {
-            // Dev mode: log the link so it can be used without email
-            _logger.LogError("\u001b[1;31m╔══════════════════════════════════════════════════════╗\u001b[0m");
-            _logger.LogError("\u001b[1;31m║  MAGIC LINK for {Email}\u001b[0m", toEmail);
-            _logger.LogError("\u001b[1;31m║  {Link}\u001b[0m", link);
-            _logger.LogError("\u001b[1;31m╚══════════════════════════════════════════════════════╝\u001b[0m");
+            // Dev mode: log the code so it can be used without email
+            _logger.LogError("[1;31m╔══════════════════════════════════════════════════════╗[0m");
+            _logger.LogError("[1;31m║  LOGIN CODE for {Email}[0m", toEmail);
+            _logger.LogError("[1;31m║  {Code}[0m", code);
+            _logger.LogError("[1;31m╚══════════════════════════════════════════════════════╝[0m");
             return;
         }
 
         var message = new EmailMessage(
             senderAddress: _fromAddress,
             recipients: new EmailRecipients([new(toEmail)]),
-            content: new EmailContent("Sign in to Gasoholic")
+            content: new EmailContent("Your Gasoholic sign-in code")
             {
-                PlainText = $"Click this link to sign in (expires in 24 hours):\n\n{link}\n\nIf you didn't request this, ignore this email.",
+                PlainText = $"Your Gasoholic sign-in code is:\n\n{code}\n\nEnter it in the app to sign in. This code expires in 30 minutes.\n\nIf you didn't request this, ignore this email.",
                 Html = $"""
-                    <p>Click the button below to sign in to Gasoholic. This link expires in 24 hours.</p>
-                    <p><a href="{link}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Sign in to Gasoholic</a></p>
-                    <p style="color:#6b7280;font-size:14px;">Or copy this URL: {link}</p>
+                    <p>Your Gasoholic sign-in code is:</p>
+                    <p style="font-size:28px;font-weight:700;letter-spacing:0.15em;color:#111827;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:16px 0;">{code}</p>
+                    <p style="color:#6b7280;font-size:14px;">Enter it in the app to sign in. This code expires in 30 minutes.</p>
                     <p style="color:#6b7280;font-size:14px;">If you didn't request this, ignore this email.</p>
                     """
             }

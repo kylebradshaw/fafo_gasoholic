@@ -1,6 +1,6 @@
 public interface IVerificationEmailSender
 {
-    Task SendMagicLinkAsync(string toEmail, string token, string baseUrl);
+    Task SendLoginCodeAsync(string toEmail, string code);
     bool IsConfigured { get; }
     string? SenderDomain { get; }
     string? SenderAddress { get; }
